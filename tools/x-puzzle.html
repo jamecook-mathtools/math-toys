@@ -82,6 +82,12 @@ kbd{font-family:var(--mono);font-size:.78rem;border:1px solid var(--line);border
 .fly.res{color:var(--res);font-weight:700}
 </style>
 <style>
+/* "Show where it came from" (lib/fly.js MT.fly.lit / MT.fly.mark): the source's yellow light, which settles into an
+   underline when the number lands, and the yellow chip the number flies in. Yellow = the piece being worked on. */
+.srcmark{position:absolute;z-index:-1;border-radius:8px;background:var(--hl);opacity:0;pointer-events:none}
+.litchip{background:var(--hl);border-radius:10px;padding:3px 10px;box-shadow:0 3px 12px rgba(15,20,45,.18)}
+</style>
+<style>
 /* MT.quiz answer boxes: dashed while the class thinks, solid green once the answer lands */
 .qbox{position:absolute;box-sizing:border-box;border:3px dashed var(--accent);border-radius:10px;
   background:color-mix(in srgb,var(--accent) 7%,transparent);pointer-events:none;transition:border-color .25s,background .25s}
@@ -182,6 +188,8 @@ body.nogroup .stages .grpstep{display:none}
 .stages li{cursor:pointer}
 .stages li:hover{border-color:color-mix(in srgb,var(--accent) 55%,var(--line))}
 .stages li:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.tri.plain .num{display:inline-block} /* the top and bottom numbers pop when they are the source */
+.pl .p1 .m,.pl .p1 .n,.gl .g1,.gl .g2,.gl .B1{display:inline-block} /* sources that pop before their number flies */
 </style>
 
 <div class="wrap">
@@ -469,10 +477,27 @@ MT.factor={parse,pairs,signs,candidates,works,solve,positiveRows,signed,group,gc
 <script>
 /* MT.fly: a number (or any text) travels on a curve from one spot to another on the timeline.
    MT.fly(TL, parent, {html, cls, from:{x,y}, to:{x,y}, t, d, lift, grow}) → the element. It is only visible while
-   flying, so the caller shows the arrival (TL.at(t + d, …)) and can hide the source. Coordinates are the parent's. */
+   flying, so the caller shows the arrival (TL.at(t + d, …)) and can hide the source. Coordinates are the parent's.
+
+   "Show where it came from" (James, 2026-10-19, every tool). When a number fills a blank from somewhere else on the screen:
+     1. its source lights up yellow and pops once BEFORE anything moves (LEAD = 0.4 s);
+     2. the number flies in a yellow chip (class litchip), so the light travels with it;
+     3. one number in the air at a time: the caller lights the next source only after this one lands (land + .15);
+     4. when it lands, the source's light settles into a yellow underline that stays until the step ends (clear(t)),
+        so a student who looked up late can still trace it. The source never moves or disappears; only its value flies.
+     5. Quiz mode: call these in the reveal beat only, never in the Your-turn beat (finding the source is the class's job).
+   Styles: lib/fly.css (.srcmark, .litchip). Include it with lib/fly.js.
+
+   MT.fly.lit(TL, parent, {html, cls, box, el, to, t, d, lift, pad}) → {fly, mark, land, clear(t)}
+     box: the source's box {x, y, w, h} in parent coordinates (the flight starts at its centre) · el: the source element,
+     which pops (give it display:inline-block) · t: when the source lights · the flight starts at t + LEAD and lands at
+     land = t + LEAD + d.
+   MT.fly.mark(TL, parent, {box, el, t, land, pad}) → {mark, clear(t)}: steps 1 and 4 only, for a tool that flies the
+     number its own way (for example the real token of the next line). Start that flight at t + MT.fly.LEAD, give the
+     flying element the litchip look, and pass its landing time as land. */
 (function(MT){
 'use strict';
-const {hd,S,bez,E}=MT.util;
+const {hd,S,bez,E,lerp}=MT.util;
 MT.fly=function(TL,parent,o){
   const el=hd('div','fly'+(o.cls?' '+o.cls:''),parent,o.html);
   const d=o.d||.9, lift=o.lift==null?90:o.lift, grow=o.grow||1;
@@ -481,6 +506,25 @@ MT.fly=function(TL,parent,o){
   TL.add(o.t,d,p=>{ const q=bez(o.from,c,o.to,p), k=1+(grow-1)*Math.sin(p*Math.PI);
     S(el,'opacity',p>0&&p<1?1:0); S(el,'transform',`translate(${q.x.toFixed(1)}px,${q.y.toFixed(1)}px) translate(-50%,-50%) scale(${k.toFixed(3)})`); },E.inOut);
   return el;
+};
+const LEAD=.4, UNDER=7;
+MT.fly.LEAD=LEAD;
+MT.fly.mark=function(TL,parent,o){
+  const b=o.box, pad=o.pad==null?8:o.pad, t=o.t;
+  const mark=hd('div','srcmark'); parent.insertBefore(mark,parent.firstChild);
+  const y0=b.y-pad/2, h0=b.h+pad, y1=b.y+b.h+3;
+  Object.assign(mark.style,{left:(b.x-pad)+'px',width:(b.w+2*pad)+'px',top:y0+'px',height:h0+'px'});
+  S(mark,'opacity',0);
+  TL.add(t,.12,p=>S(mark,'opacity',p),E.out);                                                   // light: snaps on
+  if(o.el) TL.add(t,.42,p=>S(o.el,'scale',String(1+.24*Math.sin(p*Math.PI))),E.lin);            // and the source pops once
+  if(o.land!=null) TL.add(o.land,.35,p=>{ S(mark,'top',lerp(y0,y1,p).toFixed(1)+'px'); S(mark,'height',lerp(h0,UNDER,p).toFixed(1)+'px'); },E.inOut); // lands: settles into an underline
+  return {mark,clear:te=>TL.add(te,.3,p=>S(mark,'opacity',1-p))};
+};
+MT.fly.lit=function(TL,parent,o){
+  const b=o.box, t=o.t, d=o.d||.9, land=t+LEAD+d;
+  const m=MT.fly.mark(TL,parent,{box:b,el:o.el,t,land,pad:o.pad});
+  const fly=MT.fly(TL,parent,{html:o.html,cls:'litchip'+(o.cls?' '+o.cls:''),from:{x:b.x+b.w/2,y:b.y+b.h/2},to:o.to,t:t+LEAD,d,lift:o.lift});
+  return {fly,mark:m.mark,land,clear:m.clear};
 };
 })(window.MT);
 </script>
@@ -783,42 +827,45 @@ function build(prob,hints,grp){
   fadeIn(L.head,tp+.6,.4);
   t+=q2!=null?1.1:3.3; cap(t,tri?'Multiply on top: <i>a · c</i>. Add on the bottom: <i>b</i>.':'Multiply on top, add on the bottom.',tri?`What are <i>a</i> and <i>c</i>?`:'Where do the top and bottom numbers go?');
 
+  let srcMarks=[]; // "Show where it came from": the sources stay underlined until step 3 ends
   if(tri){
-    // 3. top: a and c fly in and knock out the letters, then multiply
+    // 3. top, then bottom (Show where it came from): each source lights and pops BEFORE its number flies, one number at a time, and stays underlined
     const q3=quiz?yourTurn('top and bottom',3,.6,'What is <i>a · c</i>? What is <i>b</i>?'):null;
     t+=GAP; beat(t,'Top: a · c',3);
-    if(quiz) QB(slotB[0],{t:q3+.1,fill:t+4.1,minW:60,pad:3});
-    const lab=i=>abc[i].el.querySelector('.v'), vb=i=>{ const b=box(lab(i)); return b; };
-    hlOver(vb(0),t,t+1.3); hlOver(vb(2),t+1.3,t+2.6);
+    const lab=i=>abc[i].el.querySelector('.v');
     const pa=ph.top.querySelector('.pa'), pd=ph.top.querySelector('.pd'), pc=ph.top.querySelector('.pc');
     const [ea,ed,ec]=ph.ex.children;
-    MT.fly(TL,stage,{html:fmt(prob.a),from:PH.va,to:PH.ea,t:t+.3,d:.9,cls:'sm'});
-    bump(pa,t+1.2); TL.add(t+1.2,.01,p=>S(ea,'opacity',p>0?1:0));
-    glide(pd,t+1.2,.4,PH.ed.x-PH.pd.x); glide(pc,t+1.2,.4,PH.ec.x-PH.pc.x);
-    MT.fly(TL,stage,{html:paren(prob.c),from:PH.vc,to:PH.ec,t:t+1.6,d:.9,cls:'sm'});
-    bump(pc,t+2.5,PH.ec.x-PH.pc.x); TL.add(t+2.5,.01,p=>S(ec,'opacity',p>0?1:0));
+    const fa=MT.fly.lit(TL,stage,{html:fmt(prob.a),box:box(lab(0)),el:lab(0),to:PH.ea,t,d:.9,cls:'sm'});
+    bump(pa,fa.land); TL.add(fa.land,.01,p=>S(ea,'opacity',p>0?1:0));
+    glide(pd,fa.land,.4,PH.ed.x-PH.pd.x); glide(pc,fa.land,.4,PH.ec.x-PH.pc.x);
+    const fc=MT.fly.lit(TL,stage,{html:paren(prob.c),box:box(lab(2)),el:lab(2),to:PH.ec,t:fa.land+.15,d:.9,cls:'sm'}); // c lights only once a has landed
+    bump(pc,fc.land,PH.ec.x-PH.pc.x); TL.add(fc.land,.01,p=>S(ec,'opacity',p>0?1:0));
     // multiply: the product lights up, then turns into its answer
-    hlOver(PH.exBox,t+3,t+3.8);
-    TL.add(t+3.9,.5,p=>{ S(ph.ex,'opacity',1-p); S(pd,'opacity',1-p); S(ph.ex,'scale',String(1-.3*p)); });
-    fadeIn(ph.topR,t+4.1,.45,-12); TL.add(t+5,.6,p=>{ S(ph.topI,'opacity',p); S(ph.topR,'opacity',p<1?1:0); });
-    t+=5.2; cap(t,`Top: <i>a · c</i> = ${fmt(prob.a)} · ${paren(prob.c)} = ${N(top)}.`,'What is <i>b</i>?');
-    // 3. bottom: b flies in and knocks out the letter
+    const tm=fc.land+.5;
+    hlOver(PH.exBox,tm,tm+.8);
+    TL.add(tm+.9,.5,p=>{ S(ph.ex,'opacity',1-p); S(pd,'opacity',1-p); S(ph.ex,'scale',String(1-.3*p)); });
+    fadeIn(ph.topR,tm+1.1,.45,-12); TL.add(tm+2,.6,p=>{ S(ph.topI,'opacity',p); S(ph.topR,'opacity',p<1?1:0); });
+    if(quiz) QB(slotB[0],{t:q3+.1,fill:tm+1.1,minW:60,pad:3});
+    t=tm+2.2; cap(t,`Top: <i>a · c</i> = ${fmt(prob.a)} · ${paren(prob.c)} = ${N(top)}.`,'What is <i>b</i>?');
     t+=GAP; beat(t,'Bottom: b',3);
-    if(quiz) QB(slotB[1],{t:q3+.25,fill:t+1.3,minW:60,pad:3});
-    hlOver(vb(1),t,t+1.2);
-    MT.fly(TL,stage,{html:fmt(bottom),from:PH.vb,to:PH.pb,t:t+.3,d:1});
-    bump(ph.bot.querySelector('.pb'),t+1.3);
-    TL.add(t+1.3,.01,p=>S(ph.botR,'opacity',p>0?1:0)); TL.add(t+1.9,.6,p=>{ S(ph.botI,'opacity',p); S(ph.botR,'opacity',p<1?1:0); });
-    t+=2.6;
+    const fb=MT.fly.lit(TL,stage,{html:fmt(bottom),box:box(lab(1)),el:lab(1),to:PH.pb,t,d:1});
+    bump(ph.bot.querySelector('.pb'),fb.land);
+    TL.add(fb.land,.01,p=>S(ph.botR,'opacity',p>0?1:0)); TL.add(fb.land+.6,.6,p=>{ S(ph.botI,'opacity',p); S(ph.botR,'opacity',p<1?1:0); });
+    if(quiz) QB(slotB[1],{t:q3+.25,fill:fb.land,minW:60,pad:3});
+    srcMarks=[fa,fc,fb];
+    t=fb.land+1.3;
   } else {
     t+=GAP; beat(t,'Fill the X',3);
-    MT.fly(TL,stage,{html:fmt(top),from:srcTop,to:X.slots.top,t,d:.9}); slotFill(X.slots.top,t+.9,fmt(top));
-    MT.fly(TL,stage,{html:fmt(bottom),from:srcBot,to:X.slots.bottom,t:t+.6,d:.9}); slotFill(X.slots.bottom,t+1.5,fmt(bottom));
-    t+=1.6;
+    const pt=T.querySelector('.ptop'), pb=T.querySelector('.pbot');
+    const ft=MT.fly.lit(TL,stage,{html:fmt(top),box:box(pt),el:pt,to:X.slots.top,t,d:.9}); slotFill(X.slots.top,ft.land,fmt(top));
+    const fb=MT.fly.lit(TL,stage,{html:fmt(bottom),box:box(pb),el:pb,to:X.slots.bottom,t:ft.land+.15,d:.9}); slotFill(X.slots.bottom,fb.land,fmt(bottom));
+    srcMarks=[ft,fb];
+    t=fb.land+.1;
   }
   const signQ=top===0?'The top is 0. What does that tell you?':`The top is ${N(top)}. Do we add or subtract the factors?`;
   const listQ=`What are ALL the factor pairs of ${N(AT)}?`;
   cap(t,tri?`Bottom: <i>b</i> = ${N(bottom)}.`:`Top ${N(top)}, bottom ${N(bottom)}.`,listAll?listQ:hints?signQ:mainQ);
+  srcMarks.forEach(f=>f.clear(t+GAP)); // the underlines go when the next step starts
 
   // 3½. list every positive factor pair of the top first, before any adding or subtracting
   let prevOff=0;
@@ -871,18 +918,22 @@ function build(prob,hints,grp){
     if(hit>=0){ const rr=R[hit], e=rr.op==='+'?`${rr.p} + ${rr.q}`:`${rr.q} − ${rr.p}`; cap(t,`${e} = ${N(AB)}. These are the two numbers!`,okQ); }
     else cap(t,`None of the pairs ${sub?'subtract':'add'} to ${N(AB)}.`,'Is there another pair to try?');
   }
+  let sideMarks=[]; // the winning row stays underlined until the next step starts
   if(hit>=0){
     const {p:P,q:Q}=R[hit];
     t+=GAP; beat(t,'Fill the sides',5);
-    MT.fly(TL,stage,{html:String(P),from:{x:rowPos.m.x,y:rowPos.m.y-offTry(hit)},to:X.slots.left,t,d:1.2,cls:'res'});
-    MT.fly(TL,stage,{html:String(Q),from:{x:rowPos.n.x,y:rowPos.n.y-offTry(hit)},to:X.slots.right,t:t+.5,d:1.2,cls:'res'});
-    TL.add(t+1.2,.01,p=>S(sides[0].val,'opacity',p>0?1:0)); TL.add(t+1.7,.01,p=>S(sides[1].val,'opacity',p>0?1:0));
+    // Show where it came from: each number of the winning row lights, then flies to its side of the X, one at a time
+    const c0=rows[hit].cells[0], off=offTry(hit), srcB=el=>{ const b=box(el); return {x:b.x,y:b.y-off,w:b.w,h:b.h}; };
+    const fm=MT.fly.lit(TL,stage,{html:String(P),box:srcB(c0.querySelector('.m')),el:c0.querySelector('.m'),to:X.slots.left,t,d:.9,cls:'res',pad:6});
+    const fn=MT.fly.lit(TL,stage,{html:String(Q),box:srcB(c0.querySelector('.n')),el:c0.querySelector('.n'),to:X.slots.right,t:fm.land+.15,d:.9,cls:'res',pad:6});
+    TL.add(fm.land,.01,p=>S(sides[0].val,'opacity',p>0?1:0)); TL.add(fn.land,.01,p=>S(sides[1].val,'opacity',p>0?1:0));
+    sideMarks=[fm,fn];
     // then the signs
-    let ts=t+2.2;
+    let ts=fn.land+.5;
     SG.forEach((v,i)=>{ if(v<0){ const b=box(X.slots[i?'right':'left'].el); hlOver({x:b.x-6,y:b.y,w:b.w+12,h:b.h},ts,ts+.9); fadeIn(sides[i].sgn,ts+.3,.4); ts+=.5; } });
-    if(sideQ) sideQ.forEach((q,i)=>QB(q.b,{t:q.t,fill:i?t+1.7:t+1.2,pad:4}));
+    if(sideQ) sideQ.forEach((q,i)=>QB(q.b,{t:q.t,fill:i?fn.land:fm.land,pad:4}));
     fadeIn(check,ts+.8,.4,8);
-    t=ts+1.3; cap(t,signSay(top,bottom,P,Q),G?`Solved: ${N(SG[0])} and ${N(SG[1])}. How can they split up the middle term?`:`The puzzle is solved: ${N(SG[0])} and ${N(SG[1])}.`);
+    t=ts+1.3; if(G) sideMarks.forEach(f=>f.clear(t+GAP)); cap(t,signSay(top,bottom,P,Q),G?`Solved: ${N(SG[0])} and ${N(SG[1])}. How can they split up the middle term?`:`The puzzle is solved: ${N(SG[0])} and ${N(SG[1])}.`);
   } else {
     t+=GAP; beat(t,'No pair works',5);
     fadeIn(stamp,t,.4,-10);
@@ -924,7 +975,6 @@ function build(prob,hints,grp){
     const pieces=lines.flatMap(l=>[...l.querySelectorAll('.katex-html [class]')].filter(e=>/^(t1|s2|m|mx|s3|n|nx|s4|t4|o1|a1|c1|mid|o2|b1|c2|g1|B1|gs|g2|B2|F1|o4|h1|hs|h2|c4)$/.test(e.className.split(' ')[0])));
     for(const el of [...pieces,over,over2,done,...tags]) S(el,'opacity',0);
     const show=(i,cs,t0,d=.4)=>cs.forEach(c=>{ const e=P(i,c); if(e) fadeIn(e,t0,d); });
-    const sz=FS/40, gf=(html,from,to,t0,d,cls,lift=60)=>{ const f=MT.fly(TL,stage,{html,from,to,t:t0,d,cls:'gfly'+(cls?' '+cls:''),lift}); f.style.fontSize=FS+'px'; return f; };
 
     // 6. split the middle term with the two numbers
     // quiz mode: the overlay is skipped and the two middle terms start as blank boxes
@@ -933,31 +983,33 @@ function build(prob,hints,grp){
     t+=GAP; beat(t,'Split the middle',6);
     // the X's answer splits the middle term: the bottom of the X IS the middle coefficient, and the two sides add up to it,
     // so the middle term rips in half and the two side numbers fly in as its two pieces (James, 2026-10-16)
-    const sideB=k=>{ const b=box(X.slots[k].el); return {x:b.x-8,y:b.y-4,w:b.w+16,h:b.h+8}; };
     let tF; // when the two numbers start flying from the X
     if(q6==null){ for(const el of [L.el,card,check].filter(Boolean)) fadeOut(el,t,.3);
       fadeIn(tags[0],t+.2); show(0,['t1','s4','t4'],t+.2); fadeIn(over,t+.2); fadeIn(over2,t+.2);
       // 1) the bottom of the X and the middle term light up together: same number
       const bb=box(ph.botI); hlOver({x:bb.x-8,y:bb.y-4,w:bb.w+16,h:bb.h+8},t+.6,t+1.5); hlOver(ovB,t+.6,t+1.5);
-      // 2) the two sides of the X light up: they are the pieces
-      hlOver(sideB('left'),t+1.5,t+2.6); hlOver(sideB('right'),t+1.5,t+2.6);
-      // 3) rip: the halves tear apart, then slide out to where the two new terms go and fade as the numbers land
-      const tR=t+2.2, cL=ovB.x+ovB.w*.25, cR=ovB.x+ovB.w*.75;
+      // 2) rip: the halves tear apart and slide out to where the two new terms go; each one waits there for its number
+      const tR=t+1.6, cL=ovB.x+ovB.w*.25, cR=ovB.x+ovB.w*.75;
       const dL=mid(U(0,['s2','m','mx'])).x-cL, dR=mid(U(0,['s3','n','nx'])).x-cR;
       [[over,-1,dL],[over2,1,dR]].forEach(([el,sg,dx])=>{
         TL.add(tR,.3,p=>S(el,'transform',`translate(${(sg*22*p).toFixed(1)}px,${(-8*p).toFixed(1)}px) rotate(${(sg*12*p).toFixed(1)}deg)`),E.out);
-        TL.add(tR+.35,.75,p=>S(el,'transform',`translate(${(sg*22+(dx-sg*22)*p).toFixed(1)}px,${(-8+8*p).toFixed(1)}px) rotate(${(sg*12*(1-p)).toFixed(1)}deg)`),E.inOut);
-        TL.add(tR+.85,.3,p=>S(el,'opacity',1-p)); });
+        TL.add(tR+.35,.75,p=>S(el,'transform',`translate(${(sg*22+(dx-sg*22)*p).toFixed(1)}px,${(-8+8*p).toFixed(1)}px) rotate(${(sg*12*(1-p)).toFixed(1)}deg)`),E.inOut); });
       const zz=MT.util.sv('svg',{class:'rip',width:24,height:ovB.h+16,viewBox:`0 0 24 ${ovB.h+16}`},stage), H=ovB.h+16;
       MT.util.sv('polyline',{points:[0,.22,.44,.66,.84,1].map((f,j)=>`${j%2?16:8},${(f*H).toFixed(1)}`).join(' '),fill:'none'},zz);
       Object.assign(zz.style,{left:(ovB.x+ovB.w*.51-12)+'px',top:(ovB.y-8)+'px'}); S(zz,'opacity',0);
       TL.add(tR-.15,.15,p=>S(zz,'opacity',p)); TL.add(tR+.25,.25,p=>S(zz,'opacity',1-p));
-      tF=tR+.3; }
-    else { hlOver(sideB('left'),t,t+.9); hlOver(sideB('right'),t,t+.9); tF=t+.3;
-      QB(U(0,['s2','m']),{t:q6+.5,fill:tF+.8,minW:54,align:'right',padX:-4}); QB(U(0,['s3','n']),{t:q6+.6,fill:tF+.9,minW:54,align:'right',padX:-4}); } // the x's are there; the coefficients are the question
-    gf(KX(String(m).replace('-','−')),X.slots.left,mTo,tF,.8,'res',130); show(0,q6!=null?['s2','m']:['s2','m','mx'],tF+.8,.25);
-    gf(KX(String(n).replace('-','−')),X.slots.right,nTo,tF+.1,.8,'res',130); show(0,q6!=null?['s3','n']:['s3','n','nx'],tF+.9,.25);
-    t=tF+1.3; cap(t,`Use the X: ${N(m)} and ${N(n)} add to ${N(prob.b)}, so ${KX(bxTex)} rips into ${KX(`${lead(m,V)}${bin(n<0)}${co(n,V)}${V}`)}.`,'How should we group the four terms?');
+      tF=tR+.6; }
+    else tF=t;
+    // 3) Show where it came from: the left side of the X lights and its number flies into the first piece, then the right side
+    const sideEl=k=>X.slots[k].el, slotBox=k=>{ const b=box(sideEl(k)); return {x:b.x-4,y:b.y,w:b.w+8,h:b.h}; };
+    const flyPiece=(k,v,to,t0)=>{ const f=MT.fly.lit(TL,stage,{html:KX(String(v).replace('-','−')),box:slotBox(k),el:sideEl(k),to,t:t0,d:.75,cls:'gfly res',lift:130}); f.fly.style.fontSize=FS+'px'; return f; };
+    const fM=flyPiece('left',m,mTo,tF), fN=flyPiece('right',n,nTo,fM.land+.15);
+    if(q6==null){ TL.add(fM.land-.25,.3,p=>S(over,'opacity',1-p)); TL.add(fN.land-.25,.3,p=>S(over2,'opacity',1-p)); }
+    else { QB(U(0,['s2','m']),{t:q6+.5,fill:fM.land,minW:54,align:'right',padX:-4}); QB(U(0,['s3','n']),{t:q6+.6,fill:fN.land,minW:54,align:'right',padX:-4}); } // the x's are there; the coefficients are the question
+    show(0,q6!=null?['s2','m']:['s2','m','mx'],fM.land,.25);
+    show(0,q6!=null?['s3','n']:['s3','n','nx'],fN.land,.25);
+    t=fN.land+.4; [fM,fN].forEach(f=>f.clear(t+GAP));
+    cap(t,`Use the X: ${N(m)} and ${N(n)} add to ${N(prob.b)}, so ${KX(bxTex)} rips into ${KX(`${lead(m,V)}${bin(n<0)}${co(n,V)}${V}`)}.`,'How should we group the four terms?');
 
     // 7. group the first two and the last two
     const q7=quiz?yourTurn('group',7,.6,'Where do the parentheses go?','Your turn: write it with parentheses, then click to check.'):null;
@@ -989,14 +1041,15 @@ function build(prob,hints,grp){
     if(q9!=null) fadeIn(tags[3],q9);
     t+=GAP; beat(t,'Pull out the parentheses',9);
     if(q9==null) fadeIn(tags[3],t);
-    else { QB(F1B,{t:q9+.1,fill:t+1.4,padX:-3}); QB(U(3,['o4','h1','hs','h2','c4']),{t:q9+.25,fill:t+3.1,padX:-3}); }
-    hlOver(B1B,t,t+1.2); hlOver(B2B,t,t+1.2);
-    gf(KX(B),mid(B1B),mid(F1B),t+.3,1.1); show(3,['F1'],t+1.4,.2);
-    hlOver(g1B,t+1.3,t+2.4); hlOver(g2B,t+1.3,t+2.4);
-    gf(KX(lead(g1,V)),mid(g1B),mid(h1B),t+1.5,1); show(3,['h1'],t+2.5,.2);
-    gf(KX(`\\mathord{${g2<0?'-':'+'}}${A(g2)}`),mid(g2B),mid(h2B),t+1.9,1); show(3,['hs','h2'],t+2.9,.2);
-    show(3,['o4','c4'],t+3.1,.3);
-    t+=3.5; cap(t,`What's left in each part goes in the second parentheses: ${KX(F2)}.`,'Multiply it back out. Do you get the trinomial?');
+    // Show where it came from: the matching parentheses (from the first part), then each GCF, one at a time
+    const pull=(html,b,el,to,t0,d)=>{ const f=MT.fly.lit(TL,stage,{html,box:b,el,to,t:t0,d,cls:'gfly',lift:60,pad:5}); f.fly.style.fontSize=FS+'px'; return f; };
+    const fB=pull(KX(B),B1B,null,mid(F1B),t,.9); show(3,['F1'],fB.land,.2);
+    TL.add(t,.42,p=>S(P(2,'B1'),'scale',String(1+.1*Math.sin(p*Math.PI))),E.lin); // a wide source pops less, so it doesn't run into its neighbours
+    const f1=pull(KX(lead(g1,V)),g1B,P(2,'g1'),mid(h1B),fB.land+.15,.8); show(3,['h1'],f1.land,.2);
+    const f2=pull(KX(`\\mathord{${g2<0?'-':'+'}}${A(g2)}`),g2B,P(2,'g2'),mid(h2B),f1.land+.15,.8); show(3,['hs','h2'],f2.land,.2);
+    show(3,['o4','c4'],f2.land+.2,.3);
+    if(q9!=null){ QB(F1B,{t:q9+.1,fill:fB.land,padX:-3}); QB(U(3,['o4','h1','hs','h2','c4']),{t:q9+.25,fill:f2.land+.2,padX:-3}); }
+    t=f2.land+.6; cap(t,`What's left in each part goes in the second parentheses: ${KX(F2)}.`,'Multiply it back out. Do you get the trinomial?');
     t+=GAP; beat(t,'Check',9);
     fadeIn(done,t,.5,8); hlOver(L4B,t+.6,t+1.6);
     t+=1.7; cap(t,G.left>1?`It checks. ${KX(F2)} still has a common factor of ${N(G.left)}, so pull that out too.`:'It checks.',`${KX(triTex(prob))} = ${KX(B+F2)}`);

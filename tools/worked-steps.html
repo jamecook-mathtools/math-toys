@@ -153,6 +153,14 @@ kbd{font-family:var(--mono);font-size:.78rem;border:1px solid var(--line);border
 .board .mark.yes{color:var(--res)}
 .board .mark.no{color:var(--no)}
 .board .strike{position:absolute;z-index:3;height:6px;margin-top:-3px;border-radius:3px;background:var(--no);transform-origin:50% 50%;opacity:0;pointer-events:none}
+/* Show where it came from (lib/fly.js): a number substituted in flies in a yellow chip. Shadows only, so the line never shifts */
+.board .tk.litfly{background:var(--hl);border-radius:6px;box-shadow:0 0 0 7px var(--hl),0 4px 16px 6px rgba(15,20,45,.16)}
+</style>
+<style>
+/* "Show where it came from" (lib/fly.js MT.fly.lit / MT.fly.mark): the source's yellow light, which settles into an
+   underline when the number lands, and the yellow chip the number flies in. Yellow = the piece being worked on. */
+.srcmark{position:absolute;z-index:-1;border-radius:8px;background:var(--hl);opacity:0;pointer-events:none}
+.litchip{background:var(--hl);border-radius:10px;padding:3px 10px;box-shadow:0 3px 12px rgba(15,20,45,.18)}
 </style>
 <style>
 /* Worked Steps: the solve bar and the step editor (the board and page layout come from lib/board.css) */
@@ -684,6 +692,60 @@ MT.math={KEYRE,render,measure,layer,applyM,colorOf,paint,motion,showLayer,trailD
 })(window.MT);
 </script>
 <script>
+/* MT.fly: a number (or any text) travels on a curve from one spot to another on the timeline.
+   MT.fly(TL, parent, {html, cls, from:{x,y}, to:{x,y}, t, d, lift, grow}) → the element. It is only visible while
+   flying, so the caller shows the arrival (TL.at(t + d, …)) and can hide the source. Coordinates are the parent's.
+
+   "Show where it came from" (James, 2026-10-19, every tool). When a number fills a blank from somewhere else on the screen:
+     1. its source lights up yellow and pops once BEFORE anything moves (LEAD = 0.4 s);
+     2. the number flies in a yellow chip (class litchip), so the light travels with it;
+     3. one number in the air at a time: the caller lights the next source only after this one lands (land + .15);
+     4. when it lands, the source's light settles into a yellow underline that stays until the step ends (clear(t)),
+        so a student who looked up late can still trace it. The source never moves or disappears; only its value flies.
+     5. Quiz mode: call these in the reveal beat only, never in the Your-turn beat (finding the source is the class's job).
+   Styles: lib/fly.css (.srcmark, .litchip). Include it with lib/fly.js.
+
+   MT.fly.lit(TL, parent, {html, cls, box, el, to, t, d, lift, pad}) → {fly, mark, land, clear(t)}
+     box: the source's box {x, y, w, h} in parent coordinates (the flight starts at its centre) · el: the source element,
+     which pops (give it display:inline-block) · t: when the source lights · the flight starts at t + LEAD and lands at
+     land = t + LEAD + d.
+   MT.fly.mark(TL, parent, {box, el, t, land, pad}) → {mark, clear(t)}: steps 1 and 4 only, for a tool that flies the
+     number its own way (for example the real token of the next line). Start that flight at t + MT.fly.LEAD, give the
+     flying element the litchip look, and pass its landing time as land. */
+(function(MT){
+'use strict';
+const {hd,S,bez,E,lerp}=MT.util;
+MT.fly=function(TL,parent,o){
+  const el=hd('div','fly'+(o.cls?' '+o.cls:''),parent,o.html);
+  const d=o.d||.9, lift=o.lift==null?90:o.lift, grow=o.grow||1;
+  const c={x:(o.from.x+o.to.x)/2, y:Math.min(o.from.y,o.to.y)-lift};
+  S(el,'opacity',0);
+  TL.add(o.t,d,p=>{ const q=bez(o.from,c,o.to,p), k=1+(grow-1)*Math.sin(p*Math.PI);
+    S(el,'opacity',p>0&&p<1?1:0); S(el,'transform',`translate(${q.x.toFixed(1)}px,${q.y.toFixed(1)}px) translate(-50%,-50%) scale(${k.toFixed(3)})`); },E.inOut);
+  return el;
+};
+const LEAD=.4, UNDER=7;
+MT.fly.LEAD=LEAD;
+MT.fly.mark=function(TL,parent,o){
+  const b=o.box, pad=o.pad==null?8:o.pad, t=o.t;
+  const mark=hd('div','srcmark'); parent.insertBefore(mark,parent.firstChild);
+  const y0=b.y-pad/2, h0=b.h+pad, y1=b.y+b.h+3;
+  Object.assign(mark.style,{left:(b.x-pad)+'px',width:(b.w+2*pad)+'px',top:y0+'px',height:h0+'px'});
+  S(mark,'opacity',0);
+  TL.add(t,.12,p=>S(mark,'opacity',p),E.out);                                                   // light: snaps on
+  if(o.el) TL.add(t,.42,p=>S(o.el,'scale',String(1+.24*Math.sin(p*Math.PI))),E.lin);            // and the source pops once
+  if(o.land!=null) TL.add(o.land,.35,p=>{ S(mark,'top',lerp(y0,y1,p).toFixed(1)+'px'); S(mark,'height',lerp(h0,UNDER,p).toFixed(1)+'px'); },E.inOut); // lands: settles into an underline
+  return {mark,clear:te=>TL.add(te,.3,p=>S(mark,'opacity',1-p))};
+};
+MT.fly.lit=function(TL,parent,o){
+  const b=o.box, t=o.t, d=o.d||.9, land=t+LEAD+d;
+  const m=MT.fly.mark(TL,parent,{box:b,el:o.el,t,land,pad:o.pad});
+  const fly=MT.fly(TL,parent,{html:o.html,cls:'litchip'+(o.cls?' '+o.cls:''),from:{x:b.x+b.w/2,y:b.y+b.h/2},to:o.to,t:t+LEAD,d,lift:o.lift});
+  return {fly,mark:m.mark,land,clear:m.clear};
+};
+})(window.MT);
+</script>
+<script>
 /* The two-column board: math on the left of a dividing line, the reasoning in words on the right,
    one step at a time. Lines can split into two branches (absolute value, factoring, ±√).
    const B=MT.Board({board, wrap, TL, transport}); B.build(steps)
@@ -944,6 +1006,7 @@ MT.Board=function({board,wrap,TL,transport,dim=.5,say:SAYW=420}){
     let divAt=0; const divTo=(t,y,d=.6)=>{ if(!divider) return; const a=divAt, b=clamp((y-divTop)/divH,0,1); if(b<=a) return; divAt=b; TL.add(t,d,p=>S(divider,'transform',`scaleY(${lerp(a,b,p).toFixed(4)})`)); };
     if(divider) S(divider,'transform','scaleY(0)');
     let pendingInk=[];
+    let marks=[], markStage=null; // Show where it came from: underlines under the sources, until the step of the method ends
     const settleGreens=tt=>{ for(const it of pendingInk){ const c1=T.COL[it.col||'ink']; TL.add(tt,.6,p=>M.paint(it,T.mix(T.COL.res,c1,p))); } pendingInk=[]; };
     const rowEls=rw=>[...rw.lines.filter(l=>!l.answer).map(l=>l.cell),...rw.ops.map(l=>l.cell)]; // the T stays dark: it's structure, not work
     const beat=(t,name,i)=>{ TL.beat(t,name); TL.beats[TL.beats.length-1].step=i; };
@@ -966,9 +1029,13 @@ MT.Board=function({board,wrap,TL,transport,dim=.5,say:SAYW=420}){
           S(c,'transform',`translate(${x.toFixed(1)}px,${y.toFixed(1)}px) rotate(${(k*47+300*p).toFixed(0)}deg)`); },E.lin); }
     }
     /* substitute each answer into the line above, like Function Studio: the number flies in from the boxed answer,
-       knocks the x out (it tumbles away), then the line settles into its new spacing */
+       knocks the x out (it tumbles away), then the line settles into its new spacing.
+       Show where it came from (James, 2026-10-19): before each number moves, the boxed answer lights up yellow and pops
+       (MT.fly.mark); the number flies in a yellow chip, one at a time (the next x waits until this one has landed); the
+       answer keeps a yellow underline until this step of the method ends. */
     function subIn(row,i,t,lines){
       const byX=a=>[...a.values()].sort((p,q)=>p.cx-q.cx);
+      const LEAD=MT.fly&&MT.fly.LEAD||.4, FD=.75;
       let tt=t, last=t;
       lines.forEach(l=>{
         const src=sourceOf(i,l); if(!src) return;
@@ -977,17 +1044,23 @@ MT.Board=function({board,wrap,TL,transport,dim=.5,say:SAYW=420}){
         for(const a of A){
           if(a.text==='x'){ const g=B[j]&&B[j].text==='('?B.slice(j,j+3):B.slice(j,j+1); j+=g.length; groups.push({x:a,toks:g}); }
           else { if(B[j]) pairs.push([a,B[j]]); j++; } }
-        const ansTok=ans?byX(ans.items).filter(q=>q.text!=='x'&&q.text!=='=').pop():null;
-        const FD=.9;
-        groups.forEach((g,gi)=>{ const ft=tt+gi*.55, num=g.toks.find(q=>q.text!=='('&&q.text!==')')||g.toks[0];
-          const S0=ansTok?{x:ansTok.cx,y:ansTok.cy}:{x:g.x.cx,y:g.x.cy-120}, X={x:g.x.cx,y:g.x.cy}, C={x:(S0.x+X.x)/2,y:Math.min(S0.y,X.y)-110};
-          num.col='accent'; TL.at(ft,()=>M.paint(num,T.rgb(T.COL.accent)));
-          TL.add(ft,FD,p=>{ const v=E.inOut(p), q=bez(S0,C,X,v); M.applyM(num,{dx:q.x-num.cx,dy:q.y-num.cy,op:p>0?Math.min(1,v*10):0}); },E.lin);
-          TL.add(ft+FD,.45,p=>{ const w=Math.sin(p*Math.PI*2.5)*Math.pow(1-p,1.6)*.24; M.applyM(num,{dx:X.x-num.cx,dy:X.y-num.cy+w*6,sx:1+w,sy:1-w}); },E.lin);
+        // the answer's value: every piece right of its equals sign (−1 can be two pieces)
+        const val=ans?byX(ans.items).filter(q=>q.text!=='x'&&q.text!=='='&&q.cx>ans.eqX):[];
+        const vb=val.length?union(val.map(q=>q.box)):null;
+        let ft=tt; // when the next source lights
+        groups.forEach((g,gi)=>{ const num=g.toks.find(q=>q.text!=='('&&q.text!==')')||g.toks[0], fs=ft+(vb?LEAD:0);
+          const S0=vb?{x:vb.x+vb.w/2,y:vb.y+vb.h/2}:{x:g.x.cx,y:g.x.cy-120}, X={x:g.x.cx,y:g.x.cy}, C={x:(S0.x+X.x)/2,y:Math.min(S0.y,X.y)-110};
+          if(vb){ // the answer lights and pops first; its light settles into an underline when the number lands
+            if(MT.fly&&MT.fly.mark){ marks.push(MT.fly.mark(TL,board,{box:vb,t:ft,land:fs+FD})); markStage=row.step.stage; }
+            for(const q of val) for(const e of q.els) TL.add(ft,.42,p=>S(e,'scale',String(1+.24*Math.sin(p*Math.PI))),E.lin); }
+          num.col='accent'; TL.at(fs,()=>M.paint(num,T.rgb(T.COL.accent)));
+          TL.add(fs,FD,p=>{ const v=E.inOut(p), q=bez(S0,C,X,v); M.applyM(num,{dx:q.x-num.cx,dy:q.y-num.cy,op:p>0?Math.min(1,v*10):0}); },E.lin);
+          TL.add(fs,FD,p=>{ const on=p>0&&p<1; for(const e of num.els) e.classList.toggle('litfly',on); },E.lin); // the yellow chip, only while it flies
+          TL.add(fs+FD,.45,p=>{ const w=Math.sin(p*Math.PI*2.5)*Math.pow(1-p,1.6)*.24; M.applyM(num,{dx:X.x-num.cx,dy:X.y-num.cy+w*6,sx:1+w,sy:1-w}); },E.lin);
           const a=g.x, dir=gi%2?-1:1; // the x gets knocked out
-          TL.add(ft+FD-.05,.75,p=>{ if(p<=0){ M.applyM(a,{}); return; } const hit=Math.min(1,p/.12), sq=Math.sin(hit*Math.PI)*.22*(p<.12?1:0), u=E.out2(p);
+          TL.add(fs+FD-.05,.75,p=>{ if(p<=0){ M.applyM(a,{}); return; } const hit=Math.min(1,p/.12), sq=Math.sin(hit*Math.PI)*.22*(p<.12?1:0), u=E.out2(p);
             M.applyM(a,{dx:dir*u*95,dy:-150*u+230*u*u,rot:dir*u*480,k:1-.35*u,sx:1+sq,sy:1-sq,op:p<.55?1:1-(p-.55)/.45}); },E.lin);
-          last=Math.max(last,ft+FD+.75); });
+          last=Math.max(last,fs+FD+.75); ft=fs+FD+.15; });
         // the line settles: the old line hands over to the new one, which slides into its spacing
         const rt=last, D=.6;
         for(const [a,bb] of pairs){ TL.at(rt,s=>M.applyM(a,{op:s?0:1}));
@@ -1005,6 +1078,7 @@ MT.Board=function({board,wrap,TL,transport,dim=.5,say:SAYW=420}){
     function stepRow(row,i,t,b=null,opt={}){
       const st=row.step, mine=l=>b==null||l.branch===b;
       beat(t,opt.label||st.label||(i===0?'The problem':plainLabel(st)),i);
+      if(marks.length&&st.stage!==markStage){ for(const m of marks) m.clear(t); marks=[]; }
       settleGreens(t); tuckNotes(t);
       if(!opt.noDim){ // older lines step back so the newest one stands out
         if(i>=2) for(const el of [...rowEls(rows[i-2]),rows[i-2].say]) fadeEl(el,t,.5,1,dim);

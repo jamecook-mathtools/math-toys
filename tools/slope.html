@@ -78,6 +78,12 @@ svg.plane{display:block;width:100%;height:auto;overflow:visible;font-family:var(
 .pl-text.x{fill:var(--accent)} .pl-text.y{fill:var(--point)}
 </style>
 <style>
+/* "Show where it came from" (lib/fly.js MT.fly.lit / MT.fly.mark): the source's yellow light, which settles into an
+   underline when the number lands, and the yellow chip the number flies in. Yellow = the piece being worked on. */
+.srcmark{position:absolute;z-index:-1;border-radius:8px;background:var(--hl);opacity:0;pointer-events:none}
+.litchip{background:var(--hl);border-radius:10px;padding:3px 10px;box-shadow:0 3px 12px rgba(15,20,45,.18)}
+</style>
+<style>
 /* Slope: page layout (controls and words on the left, the graph fills the window on the right) */
 :root{--sweat:#4dabf7}
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){--sweat:#74c0fc} }
@@ -141,7 +147,13 @@ svg.plane{display:block;width:100%;height:auto;overflow:visible;font-family:var(
 
 /* rise/run highlights on the plane */
 .unit-hl{fill:var(--hl);opacity:0}
-.lab-hl,.neg-hl{fill:var(--hl);opacity:0}
+.neg-hl{fill:var(--hl);opacity:0}
+/* Show where it came from: the label's light (it settles into an underline) and the chip its number flies in (lib/fly.css) */
+.src-mark{fill:var(--hl);opacity:0}
+.slflylayer{position:fixed;inset:0;pointer-events:none;z-index:30;overflow:hidden}
+.slfly{position:absolute;left:0;top:0;white-space:nowrap;line-height:1.2;opacity:0}
+.slfly .katex{font-size:1.15em}
+.slfly.y{color:var(--point)} .slfly.x{color:var(--accent)}
 .pl-text.count{font-size:23px}
 .pl-text.lab{font-size:30px;font-weight:700}
 
@@ -456,6 +468,60 @@ MT.Plane.fmt=fmt;
 })(window.MT);
 </script>
 <script>
+/* MT.fly: a number (or any text) travels on a curve from one spot to another on the timeline.
+   MT.fly(TL, parent, {html, cls, from:{x,y}, to:{x,y}, t, d, lift, grow}) → the element. It is only visible while
+   flying, so the caller shows the arrival (TL.at(t + d, …)) and can hide the source. Coordinates are the parent's.
+
+   "Show where it came from" (James, 2026-10-19, every tool). When a number fills a blank from somewhere else on the screen:
+     1. its source lights up yellow and pops once BEFORE anything moves (LEAD = 0.4 s);
+     2. the number flies in a yellow chip (class litchip), so the light travels with it;
+     3. one number in the air at a time: the caller lights the next source only after this one lands (land + .15);
+     4. when it lands, the source's light settles into a yellow underline that stays until the step ends (clear(t)),
+        so a student who looked up late can still trace it. The source never moves or disappears; only its value flies.
+     5. Quiz mode: call these in the reveal beat only, never in the Your-turn beat (finding the source is the class's job).
+   Styles: lib/fly.css (.srcmark, .litchip). Include it with lib/fly.js.
+
+   MT.fly.lit(TL, parent, {html, cls, box, el, to, t, d, lift, pad}) → {fly, mark, land, clear(t)}
+     box: the source's box {x, y, w, h} in parent coordinates (the flight starts at its centre) · el: the source element,
+     which pops (give it display:inline-block) · t: when the source lights · the flight starts at t + LEAD and lands at
+     land = t + LEAD + d.
+   MT.fly.mark(TL, parent, {box, el, t, land, pad}) → {mark, clear(t)}: steps 1 and 4 only, for a tool that flies the
+     number its own way (for example the real token of the next line). Start that flight at t + MT.fly.LEAD, give the
+     flying element the litchip look, and pass its landing time as land. */
+(function(MT){
+'use strict';
+const {hd,S,bez,E,lerp}=MT.util;
+MT.fly=function(TL,parent,o){
+  const el=hd('div','fly'+(o.cls?' '+o.cls:''),parent,o.html);
+  const d=o.d||.9, lift=o.lift==null?90:o.lift, grow=o.grow||1;
+  const c={x:(o.from.x+o.to.x)/2, y:Math.min(o.from.y,o.to.y)-lift};
+  S(el,'opacity',0);
+  TL.add(o.t,d,p=>{ const q=bez(o.from,c,o.to,p), k=1+(grow-1)*Math.sin(p*Math.PI);
+    S(el,'opacity',p>0&&p<1?1:0); S(el,'transform',`translate(${q.x.toFixed(1)}px,${q.y.toFixed(1)}px) translate(-50%,-50%) scale(${k.toFixed(3)})`); },E.inOut);
+  return el;
+};
+const LEAD=.4, UNDER=7;
+MT.fly.LEAD=LEAD;
+MT.fly.mark=function(TL,parent,o){
+  const b=o.box, pad=o.pad==null?8:o.pad, t=o.t;
+  const mark=hd('div','srcmark'); parent.insertBefore(mark,parent.firstChild);
+  const y0=b.y-pad/2, h0=b.h+pad, y1=b.y+b.h+3;
+  Object.assign(mark.style,{left:(b.x-pad)+'px',width:(b.w+2*pad)+'px',top:y0+'px',height:h0+'px'});
+  S(mark,'opacity',0);
+  TL.add(t,.12,p=>S(mark,'opacity',p),E.out);                                                   // light: snaps on
+  if(o.el) TL.add(t,.42,p=>S(o.el,'scale',String(1+.24*Math.sin(p*Math.PI))),E.lin);            // and the source pops once
+  if(o.land!=null) TL.add(o.land,.35,p=>{ S(mark,'top',lerp(y0,y1,p).toFixed(1)+'px'); S(mark,'height',lerp(h0,UNDER,p).toFixed(1)+'px'); },E.inOut); // lands: settles into an underline
+  return {mark,clear:te=>TL.add(te,.3,p=>S(mark,'opacity',1-p))};
+};
+MT.fly.lit=function(TL,parent,o){
+  const b=o.box, t=o.t, d=o.d||.9, land=t+LEAD+d;
+  const m=MT.fly.mark(TL,parent,{box:b,el:o.el,t,land,pad:o.pad});
+  const fly=MT.fly(TL,parent,{html:o.html,cls:'litchip'+(o.cls?' '+o.cls:''),from:{x:b.x+b.w/2,y:b.y+b.h/2},to:o.to,t:t+LEAD,d,lift:o.lift});
+  return {fly,mark:m.mark,land,clear:m.clear};
+};
+})(window.MT);
+</script>
+<script>
 /* The little climber: a stick figure drawn in SVG, posed from a plain state object every frame,
    so the timeline can scrub him like everything else. Local frame: feet at (0,0), up is −y, facing +x. */
 (function(){
@@ -549,7 +615,7 @@ function starD(r){ let d=''; for(let i=0;i<10;i++){ const a=-Math.PI/2+i*Math.PI
    for slopes 1, 3, 3/5 and −2/3. One timeline; every scene is a beat that stops so the teacher can talk. */
 (function(){
 'use strict';
-const {$,hd,sv,A,S,clamp,lerp,E,fontsReady}=MT.util;
+const {$,hd,sv,A,S,clamp,lerp,E,bez,fontsReady}=MT.util;
 const fmt=MT.Plane.fmt;
 const TL=MT.Timeline();
 const P=MT.Plane($('plane'),{xmin:-6,xmax:6,ymin:-6,ymax:6,pad:58});
@@ -568,11 +634,38 @@ let seed=7; const rnd=()=>{ seed=(seed*16807)%2147483647; return seed/2147483647
 const katexTo=(el,tex)=>katex.render(tex,el,{throwOnError:false,strict:'ignore',output:'html'});
 const fade=(el,t,d,on)=>TL.add(t,d,p=>S(el,'opacity',on?p:1-p));
 
+/* "Show where it came from" (James, 2026-10-19; lib/fly.js has the rule). The rise and run labels on the plane are the
+   sources: each lights up yellow and pops, then its number flies in a yellow chip across to its blank in the formula,
+   one number at a time; the label keeps a yellow underline until the next example. The plane is SVG and the formula sits in
+   another card, so the flight runs in a fixed layer over the page and reads both positions every frame (resizing can't
+   break it), and the light is an SVG rect (MT.fly.mark draws HTML boxes). */
+const FLY_D=.8;
+const flyLayer=hd('div','slflylayer',document.body);
+function svgMark(g,el,t,land){
+  const bb=el.getBBox(), pad=8, y0=bb.y-4, h0=bb.height+8, y1=bb.y+bb.height-2, UH=7;
+  const r=sv('rect',{class:'src-mark',x:bb.x-pad,y:y0,width:bb.width+2*pad,height:h0,rx:10},g); g.insertBefore(r,el);
+  S(r,'opacity',0); S(el,'transformBox','fill-box'); S(el,'transformOrigin','center');
+  TL.add(t,.12,p=>S(r,'opacity',p),E.out);                                                     // light: snaps on
+  TL.add(t,.42,p=>S(el,'scale',String(1+.24*Math.sin(p*Math.PI))),E.lin);                      // the label pops once
+  TL.add(land,.35,p=>{ A(r,'y',lerp(y0,y1,p)); A(r,'height',lerp(h0,UH,p)); A(r,'rx',lerp(10,3.5,p)); },E.inOut); // lands: underline
+  return r;
+}
+function crossFly(tex,cls,src,dst,fontEl,t,d){
+  const el=hd('div','slfly litchip '+cls,flyLayer); katexTo(el,tex); S(el,'opacity',0);
+  TL.add(t,d,p=>{ if(p<=0||p>=1){ S(el,'opacity',0); return; }
+    const a=src.getBoundingClientRect(), b=dst.getBoundingClientRect();
+    const P0={x:a.left+a.width/2,y:a.top+a.height/2}, P1={x:b.left+b.width/2,y:b.top+b.height/2}, C={x:(P0.x+P1.x)/2,y:Math.min(P0.y,P1.y)-90};
+    const q=bez(P0,C,P1,p);
+    S(el,'fontSize',getComputedStyle(fontEl).fontSize); S(el,'opacity',1);
+    S(el,'transform',`translate(${q.x.toFixed(1)}px,${q.y.toFixed(1)}px) translate(-50%,-50%)`); },E.inOut);
+  return el;
+}
+
 function build(own){
   TL.reset(); seed=7;
   const pl=P.layers;
   for(const k in pl) pl[k].replaceChildren();
-  $('captions').replaceChildren(); $('formulas').replaceChildren(); $('hist').replaceChildren();
+  $('captions').replaceChildren(); $('formulas').replaceChildren(); $('hist').replaceChildren(); flyLayer.replaceChildren();
   const axes=P.axes(), tiles=P.tiles({gap:6});
   const lineEl=sv('line',{class:'pl-line'},pl.plot);
   const climber=SlopeClimber(pl.top);
@@ -681,8 +774,9 @@ function build(own){
     const rl=P.text(ax-.32,sg===0?ay+.3:(ay+by)/2-.18,`rise = ${fmt(rise)}`,'y lab',g); rl.setAttribute('text-anchor','end');
     for(const n of rCounts) fade(n,T,.4,false);
     fade(rl,T+.2,.5,true);
+    let negRing=null;
     if(sg<0){ // point at the minus sign: the rise is negative
-      const bb=rl.getBBox(), ring=sv('rect',{class:'neg-hl',x:bb.x-8,y:bb.y-4,width:bb.width+16,height:bb.height+8,rx:12},g);
+      const bb=rl.getBBox(), ring=negRing=sv('rect',{class:'neg-hl',x:bb.x-8,y:bb.y-4,width:bb.width+16,height:bb.height+8,rx:12},g);
       g.insertBefore(ring,rl);
       TL.add(T+.8,2.4,q=>S(ring,'opacity',(.35+.65*Math.abs(Math.sin(q*Math.PI*3.5)))*Math.min(1,q*8)),E.lin); T+=2.4; }
     T+=1;
@@ -712,14 +806,14 @@ function build(own){
     else beat(`Slope ${ex.name}`,`Slope = ${ex.name}`,'Rise over run again: swap each word for its number.');
     fade(F.el,T,.5,true); T+=.6;
     if(i===0){ T+=.4; beat(`Slope = ${ex.name}`,`Slope = ${ex.name}`,`Swap each word for its number. Rise ${fmt(rise)}, run ${run}.`+(own&&own.simplify?' Then simplify.':'')); }
-    const swap=(slot,lab,t,hold)=>{
-      const bb=lab.getBBox(), box=sv('rect',{class:'lab-hl',x:bb.x-8,y:bb.y-4,width:bb.width+16,height:bb.height+8,rx:12},g);
-      g.insertBefore(box,lab);
-      TL.add(t,1.6+hold,q=>{ const v=q<.15?q/.15:q>.85?(1-q)/.15:1; S(box,'opacity',v); S(slot.hl,'opacity',v); },E.lin);
-      TL.add(t+.55,.6,q=>slot.set(q));
-    };
-    swap(F.num,rl,T,sg<0?.8:0); T+=sg<0?1.6:1.2;
-    swap(F.den,nl,T,0); T+=1.5;
+    // each label lights and pops, its number flies to its blank, the word gives way to the number; rise first, then run
+    const swap=(slot,lab,tex,cls,t)=>{ const land=t+MT.fly.LEAD+FLY_D;
+      svgMark(g,lab,t,land); crossFly(tex,cls,lab,slot.el,F.el,t+MT.fly.LEAD,FLY_D);
+      TL.add(land,.35,q=>slot.set(q)); return land; };
+    if(negRing) TL.add(T,.12,q=>S(negRing,'opacity',1-q)); // the minus-sign light hands over to the rule's light
+    const landR=swap(F.num,rl,String(rise),'y',T);
+    const landN=swap(F.den,nl,String(run),'x',landR+.15+(sg<0?.4:0)); // a negative rise gets a moment to sink in
+    T=landN+.45;
     if(F.res) TL.add(T,.6,q=>{ S(F.res,'opacity',q); S(F.res,'transform',`translateX(${(-.4*(1-q)).toFixed(3)}em)`); },E.out);
     TL.add(T+.3,.6,q=>S(F.ring,'opacity',q),E.out);
     // add it to the list of slopes so far

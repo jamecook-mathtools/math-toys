@@ -89,7 +89,8 @@ button.primary{background:var(--accent);border-color:var(--accent);color:var(--p
 .crumb{position:absolute;width:8px;height:8px;margin:-4px 0 0 -4px;border-radius:50%;background:var(--accent);opacity:0}
 .tag{position:absolute;left:0;top:0;background:var(--accent);color:var(--panel);font:600 24px var(--display);padding:3px 14px 5px;border-radius:10px;white-space:nowrap;opacity:0}
 .tag::after{content:'';position:absolute;left:50%;bottom:-11px;margin-left:-10px;border:10px solid transparent;border-bottom:0;border-top:12px solid var(--accent)}
-.ring{position:absolute;left:0;top:0;border:3px solid var(--accent);border-radius:14px;opacity:0}
+/* "Show where it came from": the yellow light behind a number's source, which settles into an underline once the number lands */
+.srcmark{position:absolute;border-radius:10px;background:var(--hl);opacity:0;pointer-events:none}
 .cap{position:absolute;left:500px;top:0;transform:translateX(-50%);background:var(--panel);border:2px solid var(--line);color:var(--ink);font:600 26px var(--display);padding:8px 24px 10px;border-radius:999px;white-space:nowrap;opacity:0;box-shadow:0 4px 14px rgba(15,20,45,.08)}
 .cap b{color:var(--accent);font-weight:700} .cap em{color:var(--point);font-style:normal;font-weight:700}
 .flab{position:absolute;left:0;top:0;background:var(--point);color:var(--panel);font:500 24px "KaTeX_Main","Times New Roman",serif;padding:1px 12px 3px;border-radius:9px;white-space:nowrap;opacity:0}
@@ -445,14 +446,17 @@ function trailDots(card,t0,D,Sp,Cp,Ep,from,to){
   TL.add(t0,D+tail,p=>{ const tt=p*(D+tail), v=E.inOut(clamp((tt/D-from)/(to-from),0,1)), fade=clamp((tt-to*D)/tail,0,1);
     for(const o of dots) S(o.d,'opacity',v>=o.u?0.55*(1-fade):0); },E.lin);
 }
-/* A → B: matching tokens glide, collapsing tokens merge into their result, x's get bumped, numbers fly in */
+/* A → B: matching tokens glide, collapsing tokens merge into their result, x's get bumped, numbers fly in.
+   opt.g (0..1, default 1): the share of D the glides and the card's resize take, so a long run of one-at-a-time flights
+   can open up the new layout first and then fill it */
 function transition(card,t0,D,Aly,Bly,opt={}){
   showLayer(Bly,t0); showLayer(Aly,t0+D,false);
-  const col=opt.collapse, fly=opt.fly||new Map(), bump=opt.bump||new Map(), extra=opt.extra||new Map();
+  const col=opt.collapse, fly=opt.fly||new Map(), bump=opt.bump||new Map(), extra=opt.extra||new Map(), g=opt.g||1, slide=opt.slide||new Map();
   for(const [k,b] of Bly.items){
     if(fly.has(k)){ const f=fly.get(k), E2={x:b.cx,y:b.cy}, land=.5/D;
       const FL=f.to*D+.5;
       TL.add(t0,FL,p=>{ const pp=p*FL/D;
+        if(f.chip){ const on=pp>f.from&&pp<f.to; for(const e of b.els){ S(e,'background',on?'var(--hl)':'transparent'); S(e,'boxShadow',on?CHIP:'none'); S(e,'borderRadius','6px'); } }
         if(pp<=f.from){ applyM(b,{op:0}); return; }
         if(pp<f.to){ const v=E.inOut((pp-f.from)/(f.to-f.from)), q=bez(f.S,f.C,E2,v); applyM(b,{dx:q.x-E2.x,dy:q.y-E2.y,k:lerp(f.k0,1,v),op:Math.min(1,v*12)}); return; }
         const l=clamp((pp-f.to)/land,0,1), w=Math.sin(l*Math.PI*2.5)*Math.pow(1-l,1.6)*.24; // lands: squash, stretch, settle
@@ -462,12 +466,12 @@ function transition(card,t0,D,Aly,Bly,opt={}){
     const a=Aly.items.get(k);
     if(a&&!(col&&col.keys.has(k))){
       const dx=a.cx-b.cx, dy=a.cy-b.cy, same=Math.abs(a.box.w-b.box.w)<Math.max(3,a.box.w*.05);
-      if(same){ for(const e of a.els) TL.at(t0,s=>S(e,'opacity',s?'0':'1')); motion(b,t0,D,v=>({dx:dx*(1-v),dy:dy*(1-v)})); }
-      else { motion(a,t0,D,v=>({dx:-dx*v,dy:-dy*v,op:1-v})); motion(b,t0,D,v=>({dx:dx*(1-v),dy:dy*(1-v),op:v})); }
-      if(a.col!==b.col){ const c0=COL[a.col||'ink'], c1=COL[b.col||'ink']; TL.add(t0,D,p=>paint(b,mix(c0,c1,p))); } // fresh results fade from green
+      if(same){ for(const e of a.els) TL.at(t0,s=>S(e,'opacity',s?'0':'1')); motion(b,t0,D,v=>({dx:dx*(1-v),dy:dy*(1-v)}),0,g); }
+      else { motion(a,t0,D,v=>({dx:-dx*v,dy:-dy*v,op:1-v}),0,g); motion(b,t0,D,v=>({dx:dx*(1-v),dy:dy*(1-v),op:v}),0,g); }
+      if(a.col!==b.col){ const c0=COL[a.col||'ink'], c1=COL[b.col||'ink']; TL.add(t0,D*g,p=>paint(b,mix(c0,c1,p))); } // fresh results fade from green
       continue;
     }
-    const ex=extra.get(k)||{from:.35,to:.9};
+    const ex=extra.get(k)||{from:.35*g,to:.9*g};
     motion(b,t0,D,v=>({k:.7+.3*v,op:v}),ex.from,ex.to,E.out);
   }
   for(const [k,a] of Aly.items){
@@ -475,15 +479,18 @@ function transition(card,t0,D,Aly,Bly,opt={}){
     if(col&&col.keys.has(k)){ const into=Bly.items.get(col.into); const dx=into.cx-a.cx, dy=into.cy-a.cy;
       motion(a,t0,D,v=>({dx:dx*v,dy:dy*v,k:1-.45*v,op:1-v}),0,.62,E.in2); continue; }
     if(bump.has(k)){ const at=bump.get(k), dir=a.cx>0?1:-1;
+      // opt.slide: the x first slides with the new layout into the blank its number will land in, then gets knocked out there
+      const to=slide.has(k)?Bly.items.get(slide.get(k)):null, x0=to?to.cx-a.cx:0, y0=to?to.cy-a.cy:0;
+      if(to) motion(a,t0,D,v=>({dx:x0*v,dy:y0*v}),0,g);
       TL.add(t0+at*D,.75,p=>{ const v=p;
-        if(v<=0){ applyM(a,{}); return; }
+        if(v<=0){ applyM(a,to?{dx:x0,dy:y0}:{}); return; }
         const hit=Math.min(1,v/.12), sq=Math.sin(hit*Math.PI)*.22*(v<.12?1:0);   // a quick squish on impact
         const u=E.out2(v);
-        applyM(a,{dx:dir*u*95, dy:-150*u+230*u*u, rot:dir*u*480, k:1-.35*u, sx:1+sq, sy:1-sq, op:v<.55?1:1-(v-.55)/.45});
+        applyM(a,{dx:x0+dir*u*95, dy:y0-150*u+230*u*u, rot:dir*u*480, k:1-.35*u, sx:1+sq, sy:1-sq, op:v<.55?1:1-(v-.55)/.45});
       },E.lin); continue; }
-    motion(a,t0,D,v=>({op:1-v}),0,.4,E.lin);
+    motion(a,t0,D,v=>({op:1-v}),0,.4*g,E.lin);
   }
-  bgTo(card,t0,D,Aly,Bly);
+  bgTo(card,t0,D*g,Aly,Bly);
 }
 function unionBox(Ly,keys){ let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
   for(const k of keys){ const b=Ly.boxes.get(k); if(!b) continue; x0=Math.min(x0,b.x); y0=Math.min(y0,b.y); x1=Math.max(x1,b.x+b.w); y1=Math.max(y1,b.y+b.h); }
@@ -530,7 +537,7 @@ function drawStatic(){
   G.mk=sv('g',{opacity:0},G.tagg);
   sv('rect',{class:'markglow',x:-15,y:Y0-6,width:30,height:12,rx:6},G.mk);
   sv('rect',{class:'mark',x:-3.5,y:Y0-17,width:7,height:34,rx:3.5},G.mk);
-  G.tag=hd('div','tag',ov); G.ring=hd('div','ring',ov);
+  G.tag=hd('div','tag',ov);
 }
 function tagApply(v,op){
   const shown=Math.round(v); const x=X(v);
@@ -540,10 +547,64 @@ function tagApply(v,op){
   A(G.mk,'transform',`translate(${x.toFixed(2)} 0)`);
   if(op!=null){ S(G.tag,'opacity',op); A(G.mk,'opacity',op); }
 }
-// where the number inside the tag sits (stage coords), for the first flight
+// the tag's box when it shows x = v, and where the number inside it sits (stage coords), for the flights out of it
 const mctx=document.createElement('canvas').getContext('2d');
-function tagNumberPos(v){ const w=G.tag.offsetWidth; mctx.font='600 24px Lexend, "Trebuchet MS", sans-serif'; const nw=mctx.measureText(fmt(v)).width;
-  return {x:X(v)+w/2-14-nw/2, y:TAGY+19}; }
+function tagBox(v){ const old=G.tag.textContent; G.tag.textContent='x = '+fmt(v); const w=G.tag.offsetWidth, h=G.tag.offsetHeight;
+  G.tag.textContent=old; G.tag._t=null; G.tag._w=null; return {x:X(v)-w/2,y:TAGY,w,h}; }
+function tagNumberPos(v){ const b=tagBox(v); mctx.font='600 24px Lexend, "Trebuchet MS", sans-serif'; const nw=mctx.measureText(fmt(v)).width;
+  return {x:b.x+b.w-14-nw/2, y:TAGY+19}; }
+
+/* ================= "Show where it came from" (James, 2026-10-19; the same rule as lib/fly.js in the Math Toys library) =================
+   Before a number flies into a blank, its source lights up yellow and pops once (LEAD seconds before it moves). The number flies
+   in a yellow chip, one number in the air at a time. When it lands, the source's light settles into a yellow underline that stays
+   until the substitution is done, so a student who looked up late can still trace it. Here the chain is: the input tag → the
+   number in f( ) → each x in the rule. */
+const LEAD=.4, UNDER=7, CHIP='0 0 0 7px var(--hl), 0 3px 12px rgba(15,20,45,.2)';
+function srcMark(parent,before,b,pad=8){
+  const m=hd('div','srcmark'); parent.insertBefore(m,before);
+  const y0=b.y-pad/2, h0=b.h+pad, y1=b.y+b.h+3;
+  Object.assign(m.style,{left:(b.x-pad)+'px',width:(b.w+2*pad)+'px',top:y0+'px',height:h0+'px'}); S(m,'opacity',0);
+  return {el:m,
+    light(t){ TL.add(t,.12,p=>S(m,'opacity',p),E.out); },
+    settle(t){ TL.add(t,.35,p=>{ S(m,'top',lerp(y0,y1,p).toFixed(1)+'px'); S(m,'height',lerp(h0,UNDER,p).toFixed(1)+'px'); },E.inOut); },
+    clear(t){ TL.add(t,.3,p=>S(m,'opacity',1-p)); } };
+}
+// origin: for an element placed by a translate in its transform (the tag), the point to grow around, or the pop pushes it off its spot
+function pop(els,t,origin){ TL.add(t,.42,p=>{ const k=String(+(1+.24*Math.sin(p*Math.PI)).toFixed(3));
+  for(const e of els){ if(origin) S(e,'transformOrigin',origin); S(e,'scale',k); } },E.lin); }
+// the input tag lights up (a yellow halo behind the blue tag) and pops
+function tagSource(x,t){ const b=tagBox(x), m=srcMark(ov,G.tag,b,10); m.light(t); pop([G.tag],t,`${X(x).toFixed(1)}px ${(b.y+b.h/2).toFixed(1)}px`); pop([m.el],t); return m; } // the halo pops with the tag so it stays visible
+/* the input flies from the tag into f( ), then from f( ) into each x of the rule, one at a time.
+   fromLayer → toLayer, starting at t0; tagHop: also fly the tag's number into f( ) first (the quick later points).
+   Returns {D, marks, end}. */
+function substitute(card,t0,fromLayer,toLayer,x,pairs,o){
+  const {lead,F,tagHop}=o, st=card.st, fly=new Map(), bump=new Map(), slide=new Map(), hops=[], marks=[];
+  let ti=t0;
+  if(tagHop){ const ln=toLayer.items.get('ln'), tp=tagNumberPos(x);
+    const Sp={x:(tp.x-st.x)/card.base,y:(tp.y-st.y)/card.base}, Ep={x:ln.cx,y:ln.cy};
+    marks.push(tagSource(x,ti));
+    hops.push({key:'ln',bumpKey:'lx',S:Sp,C:{x:Sp.x+(Ep.x-Sp.x)*.15,y:Ep.y-150},E:Ep,fs:ti+lead,fe:ti+lead+F,k0:.7});
+    ti=ti+lead+F+.15; }
+  const order=pairs.filter(p=>toLayer.items.get('k'+p.nid)).sort((a,b)=>toLayer.items.get('k'+a.nid).cx-toLayer.items.get('k'+b.nid).cx);
+  const src=toLayer.items.get('ln');
+  if(order.length&&src){
+    const m=srcMark(card.el,card.layers,src.box); m.light(ti); marks.push(m);
+    order.forEach(pr=>{ const b=toLayer.items.get('k'+pr.nid), Sq={x:src.cx,y:src.cy}, Eq={x:b.cx,y:b.cy};
+      pop(src.els,ti);
+      hops.push({key:'k'+pr.nid,bumpKey:'k'+pr.xid,S:Sq,C:{x:(Sq.x+Eq.x)/2,y:Math.min(Sq.y,Eq.y)-(tagHop?110:150)},E:Eq,fs:ti+lead,fe:ti+lead+F,k0:1});
+      ti=ti+lead+F+.15; });
+  }
+  const end=hops.length?hops[hops.length-1].fe:t0, D=Math.max(.3,end-t0+.4);
+  hops.forEach(h=>{ const s0=(h.fs-t0)/D, s1=(h.fe-t0)/D;
+    fly.set(h.key,{S:h.S,C:h.C,k0:h.k0,from:s0,to:s1,chip:true}); bump.set(h.bumpKey,s1-.02); slide.set(h.bumpKey,h.key);
+    trailDots(card,t0,D,h.S,h.C,h.E,s0,s1); });
+  // the new layout opens up first (0.9 s: each x slides into its blank, parentheses appear around it), then fills one number at a time
+  transition(card,t0,D,fromLayer,toLayer,{fly,bump,slide,g:Math.min(1,.9/D)});
+  // each source settles into its underline once its last number has landed
+  if(tagHop) marks[0].settle(hops[0].fe);
+  if(order.length&&src) marks[marks.length-1].settle(end);
+  return {D,marks,end};
+}
 
 /* ================= captions & beats ================= */
 let beats=[], counts=[], lastCap=null;
@@ -622,6 +683,7 @@ function morphToLabel(card,last,x,y,t,D){
 function slowPoint(x,t,idx){
   const first=idx===0;
   const y=ev(ast,x);
+  let marksDone=[]; // "Show where it came from" marks to clear when the substitution step ends
   const card=makeCard(); const st=card.st;
   // states: f(x)=rule → f(1)=rule → f(1)=rule with 1s → each simplification
   const xs=[]; walk(ast,n=>{ if(n.t==='x') xs.push(n.id); });
@@ -663,32 +725,27 @@ function slowPoint(x,t,idx){
       TL.add(t+.2,.45,p=>{ S(it.pill,'opacity',.3*p); S(it.sp,'color',mix(COL.ink,COL.accent,p)); });
       TL.add(t+.75,1.5,p=>S(it.pill,'opacity',.3+.22*Math.sin(p*Math.PI*3)),E.lin); }
     t+=2.7;
-    // the number on the number line flies into f( )
+    // the number on the number line flies into f( ): the tag lights up and pops first, then its number flies in a yellow chip
     beat(t,`${fmt(x)} replaces x in f(x)`);
     caption(t,`The input <b>${fmt(x)}</b> takes the place of <b>x</b> in f(x)`);
-    TL.add(t,.75,p=>{ const on=p>0&&p<1; const w=G.tag.offsetWidth+16; S(G.ring,'opacity',on?(1-p)*.9:0);
-      S(G.ring,'width',w+'px'); S(G.ring,'height','52px'); S(G.ring,'transform',`translate(${X(x)-w/2}px,${TAGY-8}px) scale(${1+p*.35})`); },E.out);
+    const tagM=tagSource(x,t);
     const ln=L1.items.get('ln'); const tp=tagNumberPos(x); const Sp={x:(tp.x-st.x)/card.base,y:(tp.y-st.y)/card.base};
     const Ep={x:ln.cx,y:ln.cy}, Cp={x:Sp.x+(Ep.x-Sp.x)*.15,y:Ep.y-150};
-    const D1=1.8;
-    transition(card,t+.25,D1,L0,L1,{fly:new Map([['ln',{S:Sp,C:Cp,k0:.55,from:0,to:.68}]]),bump:new Map([['lx',.64]])});
-    trailDots(card,t+.25,D1,Sp,Cp,Ep,0,.68);
-    t+=.25+D1+1.0;
+    const D1=1.8, T1=t+LEAD;
+    transition(card,T1,D1,L0,L1,{fly:new Map([['ln',{S:Sp,C:Cp,k0:.55,from:0,to:.68,chip:true}]]),bump:new Map([['lx',.64]])});
+    trailDots(card,T1,D1,Sp,Cp,Ep,0,.68);
+    tagM.settle(T1+.68*D1);
+    const marks=[tagM];
+    t=T1+D1+1.0;
     if(pairs.length){
       beat(t,`${fmt(x)} replaces every x in the rule`);
       caption(t,`Now <b>${fmt(x)}</b> takes the place of every <b>x</b> in the rule`);
-      const order=[...pairs].sort((a,b)=>L2.items.get('k'+a.nid).cx-L2.items.get('k'+b.nid).cx);
-      const n=order.length, each=1.25, gap=.7, D2=each+gap*(n-1)+.2;
-      const src=L1.items.get('ln');
-      const fly=new Map(), bump=new Map(), extra=new Map();
-      order.forEach((pr,i)=>{ const b=L2.items.get('k'+pr.nid); const s0=(i*gap)/D2, s1=(i*gap+each*.7)/D2;
-        const Sq={x:src.cx,y:src.cy}, Eq={x:b.cx,y:b.cy}, Cq={x:(Sq.x+Eq.x)/2,y:-150};
-        fly.set('k'+pr.nid,{S:Sq,C:Cq,k0:1,from:s0,to:s1}); bump.set('k'+pr.xid,s1-.02);
-        extra.set('pl'+pr.nid,{from:s1-.02,to:Math.min(1,s1+.12)}); extra.set('pr'+pr.nid,{from:s1-.02,to:Math.min(1,s1+.12)});
-        trailDots(card,t+.1,D2,Sq,Cq,Eq,s0,s1); });
-      transition(card,t+.1,D2,L1,L2,{fly,bump,extra});
-      t+=.1+D2+1.0;
+      // f( )'s number lights up and pops before each flight; one number in the air at a time
+      const s=substitute(card,t+.1,L1,L2,x,pairs,{lead:LEAD,F:.75,tagHop:false});
+      marks.push(...s.marks);
+      t+=.1+s.D+.9;
     } else { showLayer(L2,t); showLayer(L1,t,false); }
+    marksDone=marks;
   } else {
     beat(t,`Next input: x = ${fmt(x)}`);
     caption(t,`Next input: <b>x = ${fmt(x)}</b>`);
@@ -698,15 +755,16 @@ function slowPoint(x,t,idx){
     showLayer(L0,t+.3);
     TL.add(t+.3,.4,p=>{ st.op=p; st.y=CARD_Y+(1-p)*12; card.apply(); },E.out);
     t+=.9;
-    // quick substitution: numbers drop in, x's are knocked out
-    const fly=new Map(), bump=new Map(), extra=new Map();
-    for(const k of ['ln',...pairs.map(p=>'k'+p.nid)]){ const b=L2.items.get(k); if(!b) continue;
-      fly.set(k,{S:{x:b.cx,y:b.cy-80},C:{x:b.cx,y:b.cy-90},k0:1,from:0,to:.55}); }
-    bump.set('lx',.5); for(const p of pairs){ bump.set('k'+p.xid,.5); extra.set('pl'+p.nid,{from:.5,to:.75}); extra.set('pr'+p.nid,{from:.5,to:.75}); }
+    // quicker substitution, same path as the first point: the tag lights and its number flies into f( ), then f( )'s number
+    // lights and flies into each x, one at a time (shorter light and flights than the first point: later points speed up)
     beat(t,`Put ${fmt(x)} in for x`); caption(t,`Put <b>${fmt(x)}</b> in for <b>x</b>`);
-    transition(card,t,.9,L0,L2,{fly,bump,extra});
-    t+=1.35;
+    const s=substitute(card,t,L0,L2,x,pairs,{lead:.3,F:.45,tagHop:true});
+    marksDone=s.marks;
+    t+=s.D+.35;
   }
+  // the underlines stay until the substitution step is done, then go as the simplifying starts
+  for(const m of marksDone) m.clear(t);
+  marksDone=[];
   // simplify one operation at a time
   for(const r of red){
     if(!r.quiet){ beat(t,r.cap); caption(t,r.cap); }

@@ -141,6 +141,12 @@ kbd{font-family:var(--mono);font-size:.78rem;border:1px solid var(--line);border
 @media (prefers-reduced-motion:reduce){ .qbox{transition:none} }
 </style>
 <style>
+/* "Show where it came from" (lib/fly.js MT.fly.lit / MT.fly.mark): the source's yellow light, which settles into an
+   underline when the number lands, and the yellow chip the number flies in. Yellow = the piece being worked on. */
+.srcmark{position:absolute;z-index:-1;border-radius:8px;background:var(--hl);opacity:0;pointer-events:none}
+.litchip{background:var(--hl);border-radius:10px;padding:3px 10px;box-shadow:0 3px 12px rgba(15,20,45,.18)}
+</style>
+<style>
 /* Complex Numbers: the problem, the real/imaginary labels, the work lines, the multiplication box, the i² card */
 .vi{color:var(--accent)}
 .new,.new .vi{color:var(--res)!important} /* color only: bold would change widths and jolt the line */
@@ -167,6 +173,7 @@ kbd{font-family:var(--mono);font-size:.78rem;border:1px solid var(--line);border
 .toggle{width:auto}
 .tv .tn{display:inline-block}
 .ghost{color:color-mix(in srgb,var(--muted) 65%,transparent)}
+.cxchip{left:0;top:0;box-sizing:border-box;padding:0;pointer-events:none} /* the yellow chip a term flies in (lib/fly.css .litchip), sized by main.js */
 </style>
 
 <div class="wrap">
@@ -412,10 +419,27 @@ MT.Stage=function(TL,stage,wrap,W,H){
 <script>
 /* MT.fly: a number (or any text) travels on a curve from one spot to another on the timeline.
    MT.fly(TL, parent, {html, cls, from:{x,y}, to:{x,y}, t, d, lift, grow}) → the element. It is only visible while
-   flying, so the caller shows the arrival (TL.at(t + d, …)) and can hide the source. Coordinates are the parent's. */
+   flying, so the caller shows the arrival (TL.at(t + d, …)) and can hide the source. Coordinates are the parent's.
+
+   "Show where it came from" (James, 2026-10-19, every tool). When a number fills a blank from somewhere else on the screen:
+     1. its source lights up yellow and pops once BEFORE anything moves (LEAD = 0.4 s);
+     2. the number flies in a yellow chip (class litchip), so the light travels with it;
+     3. one number in the air at a time: the caller lights the next source only after this one lands (land + .15);
+     4. when it lands, the source's light settles into a yellow underline that stays until the step ends (clear(t)),
+        so a student who looked up late can still trace it. The source never moves or disappears; only its value flies.
+     5. Quiz mode: call these in the reveal beat only, never in the Your-turn beat (finding the source is the class's job).
+   Styles: lib/fly.css (.srcmark, .litchip). Include it with lib/fly.js.
+
+   MT.fly.lit(TL, parent, {html, cls, box, el, to, t, d, lift, pad}) → {fly, mark, land, clear(t)}
+     box: the source's box {x, y, w, h} in parent coordinates (the flight starts at its centre) · el: the source element,
+     which pops (give it display:inline-block) · t: when the source lights · the flight starts at t + LEAD and lands at
+     land = t + LEAD + d.
+   MT.fly.mark(TL, parent, {box, el, t, land, pad}) → {mark, clear(t)}: steps 1 and 4 only, for a tool that flies the
+     number its own way (for example the real token of the next line). Start that flight at t + MT.fly.LEAD, give the
+     flying element the litchip look, and pass its landing time as land. */
 (function(MT){
 'use strict';
-const {hd,S,bez,E}=MT.util;
+const {hd,S,bez,E,lerp}=MT.util;
 MT.fly=function(TL,parent,o){
   const el=hd('div','fly'+(o.cls?' '+o.cls:''),parent,o.html);
   const d=o.d||.9, lift=o.lift==null?90:o.lift, grow=o.grow||1;
@@ -424,6 +448,25 @@ MT.fly=function(TL,parent,o){
   TL.add(o.t,d,p=>{ const q=bez(o.from,c,o.to,p), k=1+(grow-1)*Math.sin(p*Math.PI);
     S(el,'opacity',p>0&&p<1?1:0); S(el,'transform',`translate(${q.x.toFixed(1)}px,${q.y.toFixed(1)}px) translate(-50%,-50%) scale(${k.toFixed(3)})`); },E.inOut);
   return el;
+};
+const LEAD=.4, UNDER=7;
+MT.fly.LEAD=LEAD;
+MT.fly.mark=function(TL,parent,o){
+  const b=o.box, pad=o.pad==null?8:o.pad, t=o.t;
+  const mark=hd('div','srcmark'); parent.insertBefore(mark,parent.firstChild);
+  const y0=b.y-pad/2, h0=b.h+pad, y1=b.y+b.h+3;
+  Object.assign(mark.style,{left:(b.x-pad)+'px',width:(b.w+2*pad)+'px',top:y0+'px',height:h0+'px'});
+  S(mark,'opacity',0);
+  TL.add(t,.12,p=>S(mark,'opacity',p),E.out);                                                   // light: snaps on
+  if(o.el) TL.add(t,.42,p=>S(o.el,'scale',String(1+.24*Math.sin(p*Math.PI))),E.lin);            // and the source pops once
+  if(o.land!=null) TL.add(o.land,.35,p=>{ S(mark,'top',lerp(y0,y1,p).toFixed(1)+'px'); S(mark,'height',lerp(h0,UNDER,p).toFixed(1)+'px'); },E.inOut); // lands: settles into an underline
+  return {mark,clear:te=>TL.add(te,.3,p=>S(mark,'opacity',1-p))};
+};
+MT.fly.lit=function(TL,parent,o){
+  const b=o.box, t=o.t, d=o.d||.9, land=t+LEAD+d;
+  const m=MT.fly.mark(TL,parent,{box:b,el:o.el,t,land,pad:o.pad});
+  const fly=MT.fly(TL,parent,{html:o.html,cls:'litchip'+(o.cls?' '+o.cls:''),from:{x:b.x+b.w/2,y:b.y+b.h/2},to:o.to,t:t+LEAD,d,lift:o.lift});
+  return {fly,mark:m.mark,land,clear:m.clear};
 };
 })(window.MT);
 </script>
@@ -544,7 +587,7 @@ MT.complex={parse,terms,times,tex,text};
    Room to grow: dividing / rationalizing is meant to become one more op in MT.complex.parse with its own steps here. */
 (function(){
 'use strict';
-const {$,hd,sv,S,E,fontsReady}=MT.util;
+const {$,hd,sv,S,E,lerp,fontsReady}=MT.util;
 const C=MT.complex;
 const W=1200, H=700, GAP=.35;
 const TL=MT.Timeline();
@@ -692,6 +735,29 @@ function build(prob){
   const moveTerm=(srcOf,Ld,kd,t,d=.8,skip)=>{ for(const r of ['s','c','i']){ const e=Ld.P(kd+r); if(!e||(skip&&skip.has(e))) continue;
     const s=srcOf(r); if(s) travel(e,ctr(s),ctr(e),fsOf(s)/fsOf(e),t,d); else fadeIn(e,t+d*.5,d*.5); } };
   const flyTerm=(Ls,ks,Ld,kd,t,d=.8,skip)=>moveTerm(r=>Ls.P(ks+r),Ld,kd,t,d,skip);
+  // "Show where it came from" (lib/fly.js, James 2026-10-19): the source lights and pops BEFORE its value moves, the value
+  // flies in a yellow chip, one at a time, and the source keeps an underline until the step ends.
+  // Here the real pieces travel (ST.travel), so the chip is a box that rides the same arc behind them, sized from the
+  // source to the destination, and the term's pieces pop together around the term's centre.
+  const LEAD=MT.fly.LEAD, FD=.6;
+  const popTerm=(els,t0)=>{ const c=mid(union(els));
+    els.forEach(e=>{ const b=box(e); S(e,'transformOrigin',`${(c.x-b.x).toFixed(1)}px ${(c.y-b.y).toFixed(1)}px`);
+      TL.add(t0,.42,p=>S(e,'scale',String(1+.24*Math.sin(p*Math.PI))),E.lin); }); };
+  // the step-1 bar under each part of the problem is already a line under it, so a part's light settles into a yellow band
+  // around that bar instead of a second underline (lib/fly.js's underline would run into the "real" / "imaginary" labels)
+  const markPart=(sb,bar,t0,land)=>{ const pad=8, m=MT.fly.mark(TL,stage,{box:sb,t:t0,pad});
+    const a={x:sb.x-pad,y:sb.y-pad/2,w:sb.w+2*pad,h:sb.h+pad}, b=bar?{x:bar.x-5,y:bar.y-3,w:bar.w+10,h:bar.h+6}:{x:a.x,y:sb.y+sb.h+3,w:a.w,h:7};
+    TL.add(land,.35,p=>{ S(m.mark,'left',lerp(a.x,b.x,p).toFixed(1)+'px'); S(m.mark,'top',lerp(a.y,b.y,p).toFixed(1)+'px');
+      S(m.mark,'width',lerp(a.w,b.w,p).toFixed(1)+'px'); S(m.mark,'height',lerp(a.h,b.h,p).toFixed(1)+'px'); },E.inOut);
+    return m; };
+  // the chip goes in just before the element whose pieces fly, so it rides behind them but over anything earlier (the i² card)
+  const chipAlong=(fb,tb,t0,d,lift=50,before)=>{ const el=hd('div','litchip cxchip'); stage.insertBefore(el,before||stage.firstChild);
+    const from=mid(fb), to=mid(tb), c={x:(from.x+to.x)/2,y:Math.min(from.y,to.y)-lift}, PX=10, PY=4;
+    S(el,'opacity',0);
+    TL.add(t0,d,p=>{ const q=MT.util.bez(from,c,to,p), w=lerp(fb.w,tb.w,p)+2*PX, h=lerp(fb.h,tb.h,p)+2*PY;
+      S(el,'opacity',p>0&&p<1?1:0); S(el,'width',w.toFixed(1)+'px'); S(el,'height',h.toFixed(1)+'px');
+      S(el,'transform',`translate(${(q.x-w/2).toFixed(1)}px,${(q.y-h/2).toFixed(1)}px)`); },E.inOut);
+    return el; };
   const shown=new Set(); // pieces quiz mode already put on screen; they stay put
   const yourTurn=(name,step,d,q,say)=>{ t+=GAP; beat(t,'Your turn: '+name,step); const t0=t; t+=d;
     cap(t,say||'Your turn: write your answers in the boxes, then click to check.',q||caps[caps.length-1].q); return t0; };
@@ -752,13 +818,20 @@ function build(prob){
     if(qb!=null) drawBox(qb);
     t+=GAP; beat(t,'Set up the box','box');
     if(qb==null) drawBox(t);
-    const t0=qb!=null?t+.2:t+.8, hdr=[...grid.rows,...grid.cols];
-    T1.forEach((x,i)=>flyTerm(P,'a'+i,grid.rows[i],'t',t0+i*.4));
-    T2.forEach((x,j)=>flyTerm(P,K2[j],grid.cols[j],'t',t0+(T1.length+j)*.4));
-    if(qb!=null) hdr.forEach((L,n)=>QB(box(L.el),{t:qb+.6+n*.12,fill:t0+n*.4+.8,minW:70,padX:10,pad:8}));
-    t=t0+(T1.length+T2.length)*.4+.7;
+    const t0=qb!=null?t+.2:t+.8, hdr=[...grid.rows,...grid.cols], src=[...T1.map((x,i)=>'a'+i),...K2];
+    // each part lights in the problem, then flies into its blank, one at a time (a + is the operation, so only a − lights)
+    const srcEls=k=>[P.term(k).c<0?P.P(k+'s'):null,P.P(k+'c'),P.P(k+'i')].filter(Boolean);
+    const barOf=k=>{ const g=tagged.find(g=>g.k===k); return g?box(g.bar):null; }; // the real/imaginary bar under it
+    const boxMarks=[]; let tf=t0;
+    hdr.forEach((L,n)=>{ const k=src[n], els=srcEls(k), sb=union(els), db=union(L.parts('t')), land=tf+LEAD+FD;
+      boxMarks.push(markPart(sb,barOf(k),tf,land)); popTerm(els,tf);
+      flyTerm(P,k,L,'t',tf+LEAD,FD); chipAlong(sb,db,tf+LEAD,FD,50,L.el);
+      if(qb!=null) QB(box(L.el),{t:qb+.6+n*.12,fill:land,minW:70,padX:10,pad:8});
+      tf=land+.15; });
+    t=tf+.55;
     const askCell=c=>`What is ${MP(c.a)} · ${MP(c.b)}?`;
     cap(t,'The first number goes down the side and the second goes across the top.',askCell(cells[0]));
+    boxMarks.forEach(m=>m.clear(t+GAP)); // the underlines go when the next step starts
     const qm=quiz?yourTurn('multiply','mult',.7,'What goes in each box?'):null;
     cells.forEach((c,n)=>{
       t+=GAP; beat(t,`${C.text(c.a)} · ${c.b.c<0?'('+C.text(c.b)+')':C.text(c.b)}`,'mult');
@@ -797,20 +870,27 @@ function build(prob){
     // 1. a copy of −8i² comes down: its sign and number together, its i² on its own
     const L1s=L1.parts(k2).filter(e=>!e.classList.contains('vi'));
     if(wac) travel(wac,mid(union(L1s)),ctr(wac),1,t0+.4,.8); travel(wai,ctr(L1.P(k2+'i')),ctr(wai),1,t0+.4,.8);
-    // 2. i² and −1 light up together; the −8 is copied and the −1 comes from the card to take the i²'s place
-    hlOver(box(wai),t0+1.4,t0+2.9,6); hlOver(box(n1),t0+1.4,t0+2.9,6);
-    fadeIn(w('We1'),t0+1.6,.3);
-    if(wbc) travel(wbc,ctr(wac),ctr(wbc),1,t0+1.7,.6,30);
-    travel(wbn,ctr(n1),ctr(wbn),30/FS,t0+2,.9,70); flash(wbn,t0+2,1.6);
+    // 2. the i² lights up; the −8 is copied; then the −1 on the card lights and pops, and flies in its chip to take the
+    //    i²'s place (Show where it came from: one thing in the air at a time, so the −8 lands before the −1 lights)
+    const tN=t0+2.1, landN=tN+LEAD+.9, S5=landN-2.9-t0; // S5: how much later everything after the −1 lands (0.5 s)
+    hlOver(box(wai),t0+1.4,landN,6);
+    fadeIn(w('We1'),t0+1.4,.3);
+    if(wbc) travel(wbc,ctr(wac),ctr(wbc),1,t0+1.45,.6,30);
+    // the card has its own background, so its light goes inside the card (card coordinates: inside its 2px border)
+    const nb=box(n1), cb=box(grid.chip);
+    const mN=MT.fly.mark(TL,grid.chip,{box:{x:nb.x-cb.x-2,y:nb.y-cb.y-2,w:nb.w,h:nb.h},el:n1,t:tN,land:landN,pad:6});
+    travel(wbn,ctr(n1),ctr(wbn),30/FS,tN+LEAD,.9,70); chipAlong(nb,box(wbn),tN+LEAD,.9,70,WK); flash(wbn,tN+LEAD,1.6);
     // 3. multiply it out
-    hlOver(union([wbc,wbn].filter(Boolean)),t0+3.1,t0+4,6);
-    fadeIn(w('We2'),t0+3.3,.3); wr.forEach(e=>fadeIn(e,t0+3.6,.4,-10)); flash(wr,t0+3.6,1.6);
+    const t3=t0+S5;
+    hlOver(union([wbc,wbn].filter(Boolean)),t3+3.1,t3+4,6);
+    fadeIn(w('We2'),t3+3.3,.3); wr.forEach(e=>fadeIn(e,t3+3.6,.4,-10)); flash(wr,t3+3.6,1.6);
     // 4. the answer goes up into the line; the side work clears away
-    moveTerm(r=>r==='s'?w('Wrs'):r==='c'?w('Wrc'):null,L2,k2,t0+4.4,.8); flash(L2.parts(k2),t0+5.2,1.4);
-    fadeOut(WK,t0+5.3,.4);
-    if(qi!=null) termQ(L2,k2,qi+.1,t0+5.2);
-    t=t0+5.8;
+    moveTerm(r=>r==='s'?w('Wrs'):r==='c'?w('Wrc'):null,L2,k2,t3+4.4,.8); flash(L2.parts(k2),t3+5.2,1.4);
+    fadeOut(WK,t3+5.3,.4);
+    if(qi!=null) termQ(L2,k2,qi+.1,t3+5.2);
+    t=t3+5.8;
     cap(t,`${KX('\\htmlClass{vi}{i^2}=-1')}, so ${M(tm)} = ${KX(TBtex)} = ${M(nt)}.`,needGroup?'Which terms are like terms?':'');
+    if(G||A) mN.clear(t+GAP); // the card's underline goes when the next step starts
   }
 
   // 5. group like terms: real with real, i with i

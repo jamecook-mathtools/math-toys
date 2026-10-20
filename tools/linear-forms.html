@@ -1152,16 +1152,9 @@ LF.plan=function(K,choice){
     if(R.beats.length) steps.push(R);
   }
 
-  // ---- check with a point that wasn't used to fill in
-  const C={id:'check',name:'Check',beats:[]}, cp=K.check;
-  const cs={cy:cp.sy?'g:'+cp.sy:'g:chk_y',cx:cp.sx?'g:'+cp.sx:'g:chk_x'};
-  const c1=L({items:substitute(last.items,cp),carry:last,src:cs,words:`Check with $(${T(cp.x)}, ${T(cp.y)})$`,quiz:null,check:true});
-  C.beats.push({name:'Check: plug in a point',q:`Check: does another point on the line work? Plug in $(${T(cp.x)}, ${T(cp.y)})$.`,say:K.check.say||'',lines:[c1]});
-  const [lv,rv]=last.evalAt(cp);
-  const ok=lv.eq(rv);
-  const c2=L({items:flat([num('lv',lv),EQ(),num('rv',rv),it('ok',ok?'\\checkmark':'\\times','ord',ok?'okmark':'nomark')]),carry:c1,words:ok?'Both sides match':'They don’t match',quiz:['lv','rv'],late:['ok'],ok});
-  C.beats.push({name:'Check: work out each side',q:'Work out each side. Do they match?',say:ok?'Both sides match, so the point is on our line. ✓':'They don’t match.',lines:[c2],drawLine:true});
-  steps.push(C);
+  // (No check step: James, 2026-10-19, removed plugging in a point to see both sides match.)
+  // The line draws on the plane as the final equation is written.
+  const fin=steps[steps.length-1]; fin.beats[fin.beats.length-1].drawLine=true;
   return {best,form,work,steps,m,b};
 };
 
@@ -1180,7 +1173,7 @@ LF.sig=lineSig;
    1 What are we given? · 2 Pick the form (slope-intercept, point-slope, standard: hold what we know up to each one's
    blanks, then the most direct one) · 3 Find what's missing (slope, b) · 4 Fill in (numbers fly into the blanks, then
    the signs are cleaned up) · 5 Rearrange to Ax + By = C (only when standard form was picked but the givens fill
-   another form) · 6 Check (plug in a point that wasn't used).
+   another form). (The Check step was removed on 2026-10-19.)
    Stage (1200 × 700): the three form cards across the top, the Given panel on the left, the work on the right (a
    board that scrolls up as lines are added; each step ends with a black line), the question strip at the bottom.
    y / f(x) (MT.notation) and the form to work in (most direct, or the class's pick) can change mid-animation: the
@@ -1386,32 +1379,36 @@ function build(){
   t+=given.tags.length*1.0+.5;
   cap(t,given.say,'Here are three ways to write a line. Which blanks can we fill with what we know?');
 
-  // 2. pick the form. The class picks first, from what the letters mean (James, 2026-10-16: the students do the
-  // matching, remembering what each letter stands for); the matching animation comes after, as the check.
+  // 2. pick the form (James, 2026-10-19): first fill in every blank we can on all three cards, THEN pick the most direct.
   t+=GAP; beat('Three forms','pick');
   fadeOut(prompt,t,.4);
   CARDS.forEach((c,i)=>{ const cd=cards[c.form]; fadeIn(cd.frame,t+.25+i*.2,.45,14); fadeIn(cd.wrap,t+.25+i*.2,.45,14); });
-  t+=1.3; cap(t,'Three ways to write the same line. Every letter is a blank to fill.','What does each letter stand for? Which form can we fill in with what we’re given?');
-  const bc=cards[plan.best], badgeB=c=>({x:c.c.x+CW-14-150,y:CY+14,w:150,h:24});
-  let qp=null;
-  if(quiz){ t+=GAP; beat('Your turn: pick the form','pick'); qp=t; t+=.7; cap(t,'Your turn: pick the most direct form. Commit, then click.','Which form can we fill in with what we’re given?'); }
-  t+=GAP; beat('Most direct: '+LIN.FORMS[plan.best].name,'pick');
-  if(qp!=null) CARDS.forEach(c=>{ const isB=c.form===plan.best; MT.quiz.box(TL,hlL,badgeB(cards[c.form]),Object.assign({t:qp+.1,minW:150},isB?{fill:t+.4}:{out:t+.3})); });
-  setHTML(bc.badge,'Most direct'); S(bc.badge,'opacity',0);
-  TL.at(t+.2,past=>bc.frame.classList.toggle('best',past)); fadeIn(bc.badge,t+.3,.4,8);
-  t+=1.1; cap(t,`Most direct: ${FNAME(plan.best)} form.`,'Check it: which blanks can we fill with what we know?');
-  // the check: hold what we know up to each form's blanks
-  t+=GAP; beat('Check: match what we know to each blank','pick');
+  t+=1.3; cap(t,'Three ways to write the same line. Every letter is a blank to fill.','What does each letter stand for? Which blanks can we fill with what we’re given?');
+  // fill the blanks: what we know goes into each card's blanks (a green ring), the rest get a red ?
+  let qf=null;
+  if(quiz){ t+=GAP; beat('Your turn: fill the blanks','pick'); qf=t; t+=.7; cap(t,'Your turn: what goes in each blank? Write a number, or ? if we don’t have it yet.','Which blanks can we fill with what we’re given?'); }
+  t+=GAP; beat('Fill in what we know','pick');
   CARDS.forEach((c,i)=>{ const t0=t+i*1.4, cd=cards[c.form];
     hl(hlL,box(cd.eq.el),t0,t0+1.2,6);
     cd.slots.forEach((s,j)=>{ const tt=t0+.3+j*.22;
+      if(qf!=null) MT.quiz.box(TL,hlL,box(s.lab),{t:qf+.1+i*.1,fill:tt+.8,minW:40,padX:6});
       if(s.known){ const r=resolve(s.src); fadeIn(s.ring,tt+.6,.3);
         if(r&&!r.line){ const fb=box(r), lb=box(s.lab); travel(s.lab,ctr(fb),ctr(lb),Math.max(.5,Math.min(1.6,fb.h/lb.h)),tt,.8,40); } else fadeIn(s.lab,tt+.5,.3); }
       else if(K.vertical&&s.k==='m'){ const u=at('lf-slotlab no und','no slope',0,0,cd.wrap); const lb=box(s.lab), ub=box(u);
         Object.assign(u.style,{left:(lb.x+lb.w/2-ub.w/2)+'px',top:(lb.y+lb.h/2-ub.h/2)+'px'}); S(u,'opacity',0); fadeIn(u,tt+.5,.3); }
       else fadeIn(s.lab,tt+.5,.3); }); });
-  t+=3*1.4+.4; pickEndT=t;
-  const why=LF.why(K,plan.best)+' A green ring: we have that number. A <b style="color:var(--no)">?</b>: we’d have to work it out.';
+  t+=3*1.4+.4;
+  cap(t,'A green ring: we have that number. A <b style="color:var(--no)">?</b>: we’d have to work it out first.','Which form is the most direct?');
+  // then pick the most direct
+  const bc=cards[plan.best], badgeB=c=>({x:c.c.x+CW-14-150,y:CY+14,w:150,h:24});
+  let qp=null;
+  if(quiz){ t+=GAP; beat('Your turn: pick the form','pick'); qp=t; t+=.7; cap(t,'Your turn: pick the most direct form. Commit, then click.','Which form is the most direct?'); }
+  t+=GAP; beat('Most direct: '+LIN.FORMS[plan.best].name,'pick');
+  if(qp!=null) CARDS.forEach(c=>{ const isB=c.form===plan.best; MT.quiz.box(TL,hlL,badgeB(cards[c.form]),Object.assign({t:qp+.1,minW:150},isB?{fill:t+.4}:{out:t+.3})); });
+  setHTML(bc.badge,'Most direct'); S(bc.badge,'opacity',0);
+  TL.at(t+.2,past=>bc.frame.classList.toggle('best',past)); fadeIn(bc.badge,t+.3,.4,8);
+  t+=1.1; pickEndT=t;
+  const why=LF.why(K,plan.best);
   const chosen=cards[plan.form];
   if(plan.form!==plan.best){
     cap(t,why,`We could use ${FNAME(plan.form)} form instead. What would that cost?`);
