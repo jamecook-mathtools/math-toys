@@ -234,6 +234,54 @@ svg.ppplane{position:absolute;overflow:visible}
 .toggle{width:auto;max-width:100%}
 #presets .chip{font-size:.92rem}
 @media (max-width:420px){ .fields{grid-template-columns:1fr} }
+
+/* 2026-10-21: the ghost line, the new card's "?", the Pick the form cards, the y-intercept options */
+.pp-line.ghost{stroke:var(--muted);stroke-width:4;stroke-dasharray:14 10}
+.pp-right.ghost{stroke:var(--muted)}
+.pp-q{transform:translate(-50%,-50%);font:700 64px var(--serif);color:var(--muted);line-height:1}
+.pp-qnote{transform:translateX(-50%);font:600 15px var(--display);color:var(--muted);white-space:nowrap}
+.pp-fcard{border:2px solid var(--line);border-radius:18px;box-sizing:border-box;background:color-mix(in srgb,var(--accent) 4%,transparent)}
+.pp-fcard.best{border:3px solid var(--res);background:color-mix(in srgb,var(--res) 7%,transparent)}
+.pp-need{font:600 15px var(--display);color:var(--ink)}
+.pp-fbadge{transform:translateX(-100%);font:700 13px var(--display);letter-spacing:.08em;text-transform:uppercase;padding:4px 12px;border-radius:999px;color:var(--panel);background:var(--res);white-space:nowrap;opacity:0}
+.pp-fbadge.pick{background:var(--accent)} .pp-fbadge:empty{display:none}
+.pp-slotlab{font:700 24px var(--display);display:inline-block;white-space:nowrap}
+.pp-slotlab.ok{color:var(--res)} .pp-slotlab.no{color:var(--no)}
+.pp-sring{border:3px solid var(--res);border-radius:10px;box-sizing:border-box}
+.pp-same{font:500 .55em var(--display);color:var(--muted);margin-right:8px;vertical-align:middle}
+.pp-bchip{display:inline-block;vertical-align:middle}
+.pp-bchip .enclosing{display:inline-block}
+.flowpick{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:.85rem;color:var(--muted)}
+.flowpick select{border-radius:10px;padding:4px 8px;font-size:.85rem;max-width:100%}
+
+/* 2026-10-21 controls pass: one setup column, a quick row of two switches, the rest under More options */
+.fld{display:flex;flex-direction:column;gap:3px;font-size:.78rem;color:var(--muted);font-weight:600;min-width:0}
+.fld .mathinput{font-size:1.15rem;padding:4px 10px;width:100%;box-sizing:border-box}
+.fld .pair{display:flex;gap:8px;min-width:0}
+.fld .pair select{flex:none;border-radius:10px;padding:5px 8px;font-size:.88rem}
+.fld .pair .mathinput{flex:1 1 90px}
+.fld.inline{flex-direction:row;align-items:center;gap:8px;flex-wrap:wrap}
+.fld.inline select{border-radius:10px;padding:4px 8px;font-size:.88rem}
+#ex{border-radius:10px;padding:6px 10px;font-size:.88rem;flex:1 1 160px;min-width:0;font-weight:500}
+.quick{display:flex;flex-wrap:wrap;gap:6px 18px}
+.more summary{cursor:pointer;font-size:.88rem;color:var(--muted);font-weight:600;width:max-content}
+.more summary:focus-visible{outline:3px solid var(--accent);outline-offset:2px;border-radius:6px}
+.morebody{display:flex;flex-direction:column;gap:10px;padding:10px 0 2px}
+.hint{margin:0;font-size:.82rem;color:var(--muted)}
+
+/* 2026-10-21 (later): the question gets its own panel at the top; the three form cards; m waits with a blue "?" */
+.pp-qframe{border:3px solid var(--accent);background:color-mix(in srgb,var(--accent) 7%,var(--panel))}
+.pp-qcap{color:var(--accent);font-size:14px}
+.pp-qs{font:500 28px/1.32 var(--display);color:var(--ink);white-space:normal;text-wrap:pretty}
+.pp-qs .wl{display:inline-block;vertical-align:baseline}
+.pp-qs .wl .enclosing{display:inline-block}
+.pp-kw{font-weight:700;display:inline-block}
+.pp-qpt{display:inline-block;white-space:nowrap}
+.pp-qpt .enclosing{display:inline-block}
+.pp-qs .pp-bchip{margin-left:.4em}
+.pp-slotlab.soon{color:var(--accent)}
+.lay.bg{z-index:-2} /* the panels' fills sit under the yellow lights and underlines (lib/fly.css puts those at z-index −1) */
+.pp-fcard~.lay .pp-need,.pp-need{max-width:190px;white-space:normal;line-height:1.25}
 </style>
 
 <div class="wrap">
@@ -246,17 +294,21 @@ svg.ppplane{position:absolute;overflow:visible}
     <div class="kind" id="kind" role="group" aria-label="Which line do we want?">
       <button type="button" data-k="par" aria-pressed="false"><span class="sym">∥</span>Parallel</button><button type="button" data-k="perp" aria-pressed="true"><span class="sym">⊥</span>Perpendicular</button>
     </div>
-    <div class="fields">
-      <label><span>Given line</span><input id="line" class="mathinput" spellcheck="false" placeholder="y = 2/3x + 1" aria-describedby="err"></label>
-      <label><span>Through the point</span><input id="pt" class="mathinput" spellcheck="false" placeholder="(4, −1)" aria-describedby="err"></label>
+    <label class="fld"><span>Given line</span><input id="line" class="mathinput" spellcheck="false" placeholder="y = 2/3x + 1" aria-describedby="err"></label>
+    <div class="fld"><label for="thru">The new line</label>
+      <div class="pair"><select id="thru"><option value="pt">goes through the point</option><option value="b">has the y-intercept</option><option value="same">has the same y-intercept</option></select><input id="pt" class="mathinput" spellcheck="false" placeholder="(4, −1)" aria-describedby="err"></div>
     </div>
-    <div class="eqrow"><button class="primary" type="submit">Build</button><p class="err" id="err" hidden></p></div>
-    <div class="chips" id="presets"><span>Try</span></div>
-    <div class="chips" id="forms"><span>Write it in</span>
-      <button type="button" class="chip formchip" data-f="ps" aria-pressed="true">Point-slope</button>
-      <button type="button" class="chip formchip" data-f="si" aria-pressed="false">Slope-intercept</button>
+    <div class="eqrow"><button class="primary" type="submit">Build</button>
+      <select id="ex" aria-label="Load an example"><option value="">or pick an example…</option></select></div>
+    <p class="err" id="err" hidden></p>
+    <div class="quick">
+      <label class="toggle"><input type="checkbox" id="quiz"> Quiz mode</label>
+      <label class="toggle"><input type="checkbox" id="graph" checked> Show the graph</label>
     </div>
-    <div class="notation" id="mt-notation" role="group" aria-label="Write the output as">
+    <details class="more" id="more"><summary>More options</summary>
+      <div class="morebody">
+        <label class="fld inline"><span>Write the answer in</span><select id="formsel"><option value="best">the most direct form</option><option value="ps">point-slope form</option><option value="si">slope-intercept form</option></select></label>
+        <div class="notation" id="mt-notation" role="group" aria-label="Write the output as">
   <span>Output</span>
   <button type="button" data-n="y" aria-pressed="true"><i>y</i></button><button type="button" data-n="fx" aria-pressed="false"><i>f</i>(<i>x</i>)</button>
 </div>
@@ -269,8 +321,10 @@ svg.ppplane{position:absolute;overflow:visible}
 .notation button[aria-pressed="true"]{background:var(--point);border-color:var(--point);color:var(--panel)}
 </style>
 
-    <label class="toggle"><input type="checkbox" id="why"> Show why: slide or turn the slope staircase</label>
-    <label class="toggle"><input type="checkbox" id="quiz"> Quiz mode: blank boxes first, answers on the next click</label>
+        <label class="toggle"><input type="checkbox" id="why"> Slide or turn the slope staircase on the graph</label>
+        <p class="hint">Quiz mode puts blank boxes up first; the next click fills them in.</p>
+      </div>
+    </details>
   </form>
 
   <section class="panel stepcard" aria-label="Steps">
@@ -302,7 +356,7 @@ svg.ppplane{position:absolute;overflow:visible}
       <span><i style="background:var(--accent)"></i>Run</span>
       <span><i style="background:var(--hl)"></i>Being worked on</span>
     </div>
-    <p class="keys"><kbd>→</kbd> next step · <kbd>←</kbd> previous step · <kbd>Space</kbd> play or pause. Switch parallel ↔ perpendicular at any time to compare: the lesson goes back to the new slope. Click a step to jump to it.</p>
+    <p class="keys"><kbd>→</kbd> next · <kbd>←</kbd> back · <kbd>Space</kbd> play. Click a step to jump to it.</p>
   </section>
 </div>
 
@@ -1099,12 +1153,23 @@ function clip(x0,y0,dx,dy,m=0){
 PP.clip=clip;
 const dirOf=m=>m===null?[0,1]:[m.d,m.n];
 
-PP.make=function(G,P,kind){
+// thru: how the new line is pinned down (James, 2026-10-21): {mode:'pt'} through the point P · {mode:'b', b} a y-intercept
+// of b · {mode:'same'} the same y-intercept as the given line. A y-intercept is the point (0, b), so P becomes (0, b).
+PP.readNum=function(src){ const s=norm(src); const v=s?parse(s):null;
+  if(!v) throw new Error('Type the y-intercept as a number, like 3 or −1/2.');
+  if(Math.abs(v.val)>VIEW) throw new Error('Keep the y-intercept on the grid: from −8 to 8.'); return v; };
+PP.make=function(G,P,kind,thru){
+  thru=thru||{mode:'pt'};
+  if(thru.mode==='same'){ if(G.kind==='v') throw new Error('A vertical line like x = a has no y-intercept (it never crosses the y-axis, or it is the y-axis). Pick a point instead.');
+    if(Math.abs(G.b.val)>VIEW) throw new Error('The given line crosses the y-axis off the grid. Pick a point instead.'); }
+  if(thru.mode!=='pt') P={x:F(0),y:thru.mode==='same'?G.b:F(thru.b)};
   const gm=G.kind==='v'?null:G.m;
   const nm=kind==='par'?gm:(gm===null?F(0):gm.zero?null:F(-1).div(gm));
   const px=P.x.val, py=P.y.val;
   const on=G.kind==='v'?P.x.eq(G.a):P.y.eq(gm.mul(P.x).add(G.b));
-  if(kind==='par'&&on) throw new Error('That point is on the given line, so the parallel line through it is the same line. Pick a point off the line.');
+  if(kind==='par'&&on) throw new Error(thru.mode==='pt'?'That point is on the given line, so the parallel line through it is the same line. Pick a point off the line.':
+    'The same slope and the same y-intercept make the same line. Pick perpendicular, or a different y-intercept.');
+  if(thru.mode!=='pt'&&(kind==='par'?gm===null:gm!==null&&gm.zero)) throw new Error('The new line would be vertical, and a vertical line has no y-intercept to choose. Use a point instead.');
   // a point on the given line (to draw it) and its direction
   const g0=G.kind==='v'?[G.a.val,0]:[0,G.b.val], gd=dirOf(gm);
   if(!clip(g0[0],g0[1],gd[0],gd[1])) throw new Error('That line doesn’t cross the grid (x and y from −8 to 8). Try a line closer to the middle.');
@@ -1114,7 +1179,8 @@ PP.make=function(G,P,kind){
   let geo=null;
   if(!L.big){
     // try every whole-number point on the given line (and both directions along it, and both quarter turns); score each
-    // placement: near the middle, not lying on an axis, the moved copy clear of the given one, a turned run reading left to right
+    // placement: near the middle, not lying on an axis, the moved copy clear of the given one; the run always goes to the right
+    // (James, 2026-10-21: a negative slope reads right and down, never left and up), so other placements are a last resort
     const cands=[];
     if(G.kind==='v') for(let y=-VIEW+1;y<=VIEW-1;y++) cands.push([G.a.val,y,G.a.int]);
     else for(let x=-VIEW+1;x<=VIEW-1;x++){ const y=gm.mul(x).add(G.b); cands.push([x,y.val,y.int]); }
@@ -1124,17 +1190,22 @@ PP.make=function(G,P,kind){
     let bs=1e9;
     cands.filter(c=>inV(c[0],c[1])).forEach(c=>{
       for(const s of [1,-1]){ const a=stairs([c[0],c[1]],L,s,0); if(!fits(a)) continue;
-        for(const rot of kind==='par'?[0]:[90,-90]){ const b=stairs([px,py],L,s,rot); if(!fits(b)) continue;
-          const runLeft=rot&&b.l1[0]<-1e-9||rot&&b.l2[0]<-1e-9;
-          const sc=.5*Math.hypot(c[0],c[1])+(c[2]?0:30)+4*(onAxis(a)+onAxis(b))+(runLeft?1.5:0)+(near(a,b)<1.5?5:0)+(Math.hypot(c[0]-px,c[1]-py)<2.5?3:0);
-          if(sc<bs){ bs=sc; geo={A:[c[0],c[1]],s,rot,L,given:a,moved:b}; } } } });
+        // the moved copy starts at P, or (when that runs off the grid) ends at P; either way its long side lies on the new line
+        for(const rot of kind==='par'?[0]:[90,-90]) for(const end of [false,true]){ const b0=stairs([px,py],L,s,rot);
+          const mb=end?[px-b0.l1[0]-b0.l2[0],py-b0.l1[1]-b0.l2[1]]:[px,py], b=end?stairs(mb,L,s,rot):b0; if(!fits(b)) continue;
+          const runLeft=b.l1[0]<-1e-9||b.l2[0]<-1e-9;
+          const sc=.5*Math.hypot(c[0],c[1])+(c[2]?0:30)+4*(onAxis(a)+onAxis(b))+(runLeft?100:0)+(s!==1?100:0)+(end?2:0)+(near(a,b)<1.5?5:0)+(Math.hypot(c[0]-px,c[1]-py)<2.5?3:0);
+          if(sc<bs){ bs=sc; geo={A:[c[0],c[1]],s,rot,L,given:a,moved:b,mb}; } } } });
   }
   // where the two lines cross (the right-angle mark), if they do and it's on the grid
   let cross=null;
   if(kind==='perp'){ const det=gd[0]*(-nd[1])-gd[1]*(-nd[0]);
     if(Math.abs(det)>1e-12){ const rx=px-g0[0], ry=py-g0[1], u=(rx*(-nd[1])-ry*(-nd[0]))/det; const X=[g0[0]+u*gd[0],g0[1]+u*gd[1]];
       if(inV(X[0],X[1],.6)) cross=X; } }
-  return {G,P,kind,gm,nm,on,g0,gd,nd,geo,cross};
+  // the ghost line's path (Pick the form flow): parallel slides out from the given line to P; perpendicular slides along
+  // the given line to the foot of P (where they cross)
+  const ug=Math.hypot(gd[0],gd[1]), u=[gd[0]/ug,gd[1]/ug], k=(px-g0[0])*u[0]+(py-g0[1])*u[1], foot=[g0[0]+k*u[0],g0[1]+k*u[1]];
+  return {G,P,kind,thru,gm,nm,on,g0,gd,nd,geo,cross,foot,u};
 };
 
 // TeX of a slope for words and chips
@@ -1169,7 +1240,11 @@ const KX=t=>katex.renderToString(t,KO),KR=(el,t)=>katex.render(t,el,KO);
 const words=s=>String(s||'').replace(/\$([^$]+)\$/g,(m,t)=>KX(t));
 const T=v=>F(v).tex(), fmt=MT.Plane.fmt;
 const PLX=14,PLY=14,PLS=576;
-const GV={x:606,y:14,w:580,h:110}, CD={y:134,h:150,w:284,xs:[606,902]}, WA={x:606,y:294,w:580,h:298};
+// the right-hand column; with the graph switched off (James, 2026-10-21: "when we're just practicing the math") it moves to the middle
+let GV,CD,WA;
+function layout(graph){ const ox=graph?606:310; GV={x:ox,y:14,w:580,h:128}; CD={y:152,h:148,w:284,xs:[ox,ox+296]}; WA={x:ox,y:310,w:580,h:282}; }
+layout(true);
+let anchors={}; // named beats a rebuild can go back to (the word "parallel" / "perpendicular")
 const MATHW=348, WORDX=384, WORDW=186;
 
 // ---- KaTeX lines whose pieces can be found and moved (the same format as Writing Linear Equations' plan)
@@ -1191,8 +1266,8 @@ function texOf(id,items){ return items.map(i=>{
   const p=`\\htmlClass{${id}-${i.k}}{${body}}`;
   return i.kind==='rel'?`\\mathrel{${p}}`:i.kind==='bin'?`\\mathbin{${p}}`:i.kind==='open'?`\\mathopen{${p}}`:i.kind==='close'?`\\mathclose{${p}}`:p; }).join(''); }
 const pieceSig=i=>i.frac?null:i.tex+'|'+[].concat(i.cls||[]).join(' ');
-function mkEq(id,items,parent,fs){
-  const el=hd('div','wl',parent); KR(el,texOf(id,items).replace(/\\frac/g,'\\dfrac')); el.style.fontSize=fs+'px';
+function mkEq(id,items,parent,fs,small){
+  const el=hd('div','wl',parent); const tx=texOf(id,items); KR(el,small?tx:tx.replace(/\\frac/g,'\\dfrac')); el.style.fontSize=fs+'px';
   const L={id,el,items,fs,P:k=>el.querySelector('.'+id+'-'+k),pcs:[],ctn:[],byK:{}};
   (function walk(its){ for(const i of its){ const e=L.P(i.k); if(!e) continue;
     if(i.frac){ L.ctn.push({k:i.k,el:e}); walk(i.frac.num); walk(i.frac.den); }
@@ -1205,6 +1280,7 @@ function cardItems(form,Yt){
   const Y={k:'Y',tex:Yt,cls:'vy'}, X={k:'x',tex:'x',cls:'vx'};
   if(form==='si') return [Y,EQ(),slotI('m','m'),X,{k:'bo',tex:'+',kind:'bin'},slotI('b','b','vy')];
   if(form==='ps') return [Y,{k:'yo',tex:'-',kind:'bin'},slotI('y1','y_1','vy'),EQ(),slotI('m','m'),{k:'lp',tex:'(',kind:'open'},X,{k:'xo',tex:'-',kind:'bin'},slotI('x1','x_1','vx'),{k:'rp',tex:')',kind:'close'}];
+  if(form==='std') return [slotI('A','A'),X,{k:'Bo',tex:'+',kind:'bin'},slotI('B','B'),Y,EQ(),slotI('C','C')];
   return [X,EQ(),slotI('x1','x_1','vx')]; // a vertical line
 }
 const TPLNAME={ps:'Point-slope form',si:'Slope-intercept form',v:'A vertical line: $x = x_1$'};
@@ -1269,7 +1345,10 @@ function SlopeW(par,x,cy,v,hlPar,flips,fs=50){
 let hlAt=null; // set in build: the yellow highlight on a layer
 
 // ---- the build panel state
-const store={line:'y = 2/3x + 1',pt:'(4, −1)',kind:'perp',form:'ps',why:true};
+// The lesson (James, 2026-10-21): What are we given? (the word parallel / perpendicular tells us the slope) → Pick the form
+// (slope + a point, or slope + y-intercept) → Find the slope → Fill in the constants. (The 2026-10-20 slope-first order was
+// removed at his request the same day; it is Math Toys Source version 1792506829-dfea if it's ever wanted back.)
+const store={line:'y = 2/3x + 1',pt:'(4, −1)',b:'−2',thru:'pt',kind:'perp',form:'best',why:true,graph:true};
 try{ Object.assign(store,JSON.parse(localStorage.getItem('mt-pp')||'{}')); }catch(e){}
 const save=()=>{ try{ localStorage.setItem('mt-pp',JSON.stringify(store)); }catch(e){} };
 const PRESETS=[
@@ -1279,13 +1358,19 @@ const PRESETS=[
   {line:'y = −1/2x − 3',pt:'(−2, 1)'},
   {line:'2x + 3y = 6',pt:'(2, −1)'},
   {line:'y = 4',pt:'(3, −2)'},
-  {line:'x = −2',pt:'(1, 3)'}
+  {line:'x = −2',pt:'(1, 3)'},
+  {line:'y = 3x + 1',thru:'b',b:'−2'},
+  {line:'y = −1/4x + 5',thru:'same',kind:'perp'},
+  {line:'2x + 3y = 6',thru:'same',kind:'perp'}
 ];
+const presetLabel=p=>`${p.line.replace(/(\d)\/(\d)/g,'$1⁄$2')} · ${p.thru==='b'?'b = '+p.b:p.thru==='same'?'same b, ⊥':p.pt}`;
 
 function build(){
-  TL.reset(); stage.innerHTML=''; stageAt=[]; marksT={};
-  const fx=MT.notation.fx, Yt=fx?'f(x)':'y', quiz=MT.quiz.on, why=store.why, form=store.form;
-  const {G,P}=K, perp=K.kind==='perp', gm=K.gm, nm=K.nm, geo=K.geo;
+  TL.reset(); stage.innerHTML=''; stageAt=[]; marksT={}; anchors={};
+  const graph=store.graph!==false; layout(graph);
+  const fx=MT.notation.fx, Yt=fx?'f(x)':'y', quiz=MT.quiz.on, why=store.why&&graph;
+  const {G,P}=K, perp=K.kind==='perp', gm=K.gm, nm=K.nm, geo=K.geo, thru=K.thru.mode;
+  const best=thru==='pt'?'ps':'si', form=store.form==='ps'||store.form==='si'?store.form:best;
   const lay=cls=>hd('div','lay '+cls,stage);
   const bg=lay('bg'), hlL=lay('hl'), fg=lay('fg'), top=lay('top');
   const at=(cls,html,x,y,par)=>{ const e=hd('div',cls,par||fg,html); e.style.left=x+'px'; e.style.top=y+'px'; return e; };
@@ -1309,13 +1394,16 @@ function build(){
   const gL=seg('given'); gL.setAttribute('pathLength','1');
   A(gL,'x1',X(gc[0][0])); A(gL,'y1',Y(gc[0][1])); A(gL,'x2',X(gc[1][0])); A(gL,'y2',Y(gc[1][1])); S(gL,'strokeDashoffset',1);
   const nc=PP.clip(px,py,K.nd[0],K.nd[1],.3), nL=seg('new'); S(nL,'opacity',0);
-  const growNew=(t,d=.9)=>TL.add(t,d,p=>{ S(nL,'opacity',p>0?1:0);
+  const ghosts=[]; // the ghost line (and its moving right angle) gives way when the real new line draws
+  const growNew=(t,d=.9)=>{ ghosts.forEach(g=>TL.add(t,d,p=>S(g,'opacity',(g._op||1)*(1-p)))); return growNewL(t,d); };
+  const growNewL=(t,d=.9)=>TL.add(t,d,p=>{ S(nL,'opacity',p>0?1:0);
     A(nL,'x1',X(lerp(px,nc[0][0],p))); A(nL,'y1',Y(lerp(py,nc[0][1],p))); A(nL,'x2',X(lerp(px,nc[1][0],p))); A(nL,'y2',Y(lerp(py,nc[1][1],p))); },E.inOut);
   // the given point
   const ptG=sv('g',{class:'pp-pt',transform:`translate(${X(px)},${Y(py)})`},Pn.layers.top);
   const halo=sv('circle',{class:'halo',r:20},ptG); sv('circle',{class:'d',r:9},ptG); S(ptG,'opacity',0); S(halo,'opacity',0);
   const ptTex=`(\\htmlClass{vx}{${T(P.x)}},\\,\\htmlClass{vy}{${T(P.y)}})`;
   const ptLab=at('pp-ptlab',KX(ptTex),0,0); S(ptLab,'opacity',0);
+  if(!graph){ svg.style.display='none'; ptLab.style.display='none'; }
   { // put the label where it stays clearest of both lines, the staircases and the axes (with their numbers), inside the plane
     const lb=box(ptLab), u=Pn.unit, w=lb.w, h=lb.h;
     const segs=[[[-VIEW,0],[VIEW,0]],[[-VIEW,-.75],[VIEW,-.75]],[[0,-VIEW],[0,VIEW]],[[-.8,-VIEW],[-.8,VIEW]]], segL=[];
@@ -1323,7 +1411,7 @@ function build(){
     if(gcs) segL.push(gcs); if(ncs) segL.push(ncs);
     if(K.geo){ const g=K.geo, why=store.why; for(const st of why?[g.given,g.moved]:[g.given]) segL.push([st.pts[0],st.pts[1]],[st.pts[1],st.pts[2]]);
       // the staircases' numbers too (where they end up)
-      [stairGeo(g.A,g.L,g.s,0)].concat(why?[stairGeo([px,py],g.L,g.s,g.rot)]:[]).forEach(q=>q.legs.forEach(l=>{ if(l) segL.push([[l.lab[0]-.3,l.lab[1]],[l.lab[0]+.3,l.lab[1]]]); })); }
+      [stairGeo(g.A,g.L,g.s,0)].concat(why?[stairGeo(g.mb,g.L,g.s,g.rot)]:[]).forEach(q=>q.legs.forEach(l=>{ if(l) segL.push([[l.lab[0]-.3,l.lab[1]],[l.lab[0]+.3,l.lab[1]]]); })); }
     // distance from a segment to the label's rectangle (math units): sample along the segment
     const drect=(R,a,b)=>{ const n=Math.max(2,Math.ceil(Math.hypot(b[0]-a[0],b[1]-a[1])/.1)); let d=1e9;
       for(let i=0;i<=n;i++){ const q=[a[0]+(b[0]-a[0])*i/n,a[1]+(b[1]-a[1])*i/n];
@@ -1367,22 +1455,28 @@ function build(){
     return {g,t1,t2,draw};
   }
 
-  // ---- the Given panel
-  const gvF=at('pp-frame','',GV.x,GV.y,bg); Object.assign(gvF.style,{width:GV.w+'px',height:GV.h+'px'});
-  const gcap=at('pp-cap','Given',GV.x+18,GV.y+10);
-  const badge=at('pp-badge '+K.kind,perp?'⊥ Perpendicular':'∥ Parallel',GV.x+GV.w-14,GV.y+9);
+  // ---- the question, in its own panel at the top (James, 2026-10-21: "it should get its own section, it's why we're here").
+  // Its pieces are the sources later: the word parallel / perpendicular, the given line, the point or the y-intercept.
+  const kw=perp?'perpendicular':'parallel';
+  const gvF=at('pp-frame pp-qframe','',GV.x,GV.y,bg); Object.assign(gvF.style,{width:GV.w+'px',height:GV.h+'px'});
+  const gcap=at('pp-cap pp-qcap','The question',GV.x+18,GV.y+10);
+  const qs=at('pp-qs','',GV.x+18,GV.y+34); qs.style.width=(GV.w-36)+'px';
+  const tx=s=>qs.appendChild(document.createTextNode(s)), span=(cls,html)=>hd('span',cls,qs,html);
   let gItems;
   if(G.kind==='v') gItems=flat([XV(),EQ(),num('a',G.a)]);
   else if(G.kind==='std') gItems=flat([coefTerm('A',G.A,true,XV()),coefTerm('B',G.B,false,YS()),EQ(),num('C',G.C)]);
   else { const Yi=it('Y',Yt,'ord','vy',{out:true}); gItems=flat([Yi,EQ(),G.m.zero?num('b',G.b):[coefTerm('m',G.m,true,XV()),G.b.zero?[]:constTerm('b',G.b,false)]]); }
-  const llab=at('pp-lab','Line',GV.x+18,GV.y+70);
-  const g0=mkEq('g0',gItems,fg,32); g0.stage=true; g0.spec={key:'g0',src:{}};
-  let gb=box(g0.el); g0.el.style.left=(GV.x+84)+'px'; g0.el.style.top=(GV.y+70-gb.h/2)+'px'; gb=box(g0.el);
-  const plab=at('pp-lab','Point',gb.x+gb.w+40,GV.y+70);
-  const ptEq=at('pp-pteq',KX(`(\\htmlClass{g-px}{\\htmlClass{vx}{${T(P.x)}}},\\,\\htmlClass{g-py}{\\htmlClass{vy}{${T(P.y)}}})`),0,0);
-  { const pb=box(ptEq), lb=box(plab); ptEq.style.left=(lb.x+lb.w+14)+'px'; ptEq.style.top=(GV.y+70-pb.h/2)+'px'; }
-  const ptX=ptEq.querySelector('.g-px'), ptY=ptEq.querySelector('.g-py');
-  const gvEls=[gvF,gcap,badge,llab,g0.el,plab,ptEq]; gvEls.forEach(e=>S(e,'opacity',0));
+  tx('What is the equation of the line that is '); const kwEl=span('pp-kw',kw); tx(' to ');
+  const g0=mkEq('g0',gItems,qs,28,true); g0.stage=true; g0.spec={key:'g0',src:{}};
+  let thEl, bChip=null;
+  if(thru==='pt'){ tx(' and goes through the point '); thEl=span('pp-qpt',KX(`(\\htmlClass{g-px}{\\htmlClass{vx}{${T(P.x)}}},\\,\\htmlClass{g-py}{\\htmlClass{vy}{${T(P.y)}}})`)); tx('?'); }
+  else if(thru==='b'){ tx(' and has a y-intercept of '); thEl=span('pp-qpt',KX(`\\htmlClass{g-pb}{\\htmlClass{vy}{${T(P.y)}}}`)); tx('?'); }
+  else { tx(' and has '); thEl=span('pp-kw pp-kwp','the same y-intercept'); tx('?'); bChip=span('pp-bchip pp-qpt',KX(`b = \\htmlClass{g-pb}{\\htmlClass{vy}{${T(P.y)}}}`)); }
+  { const avail=GV.h-42; let f=31; const setF=v=>{ qs.style.fontSize=v+'px'; g0.el.style.fontSize=v+'px'; g0.fs=v; };
+    setF(f); while(f>16&&box(qs).h>avail+.5){ f-=1; setF(f); } }
+  const ptX=qs.querySelector('.g-px'), ptY=qs.querySelector('.g-py'), ptB=qs.querySelector('.g-pb');
+  if(bChip) S(bChip,'opacity',0);
+  [gvF,gcap,qs].forEach(e=>S(e,'opacity',0));
 
   // ---- the two slope cards
   const vOf=m=>m===null?{und:true}:{sg:m.sign<0?-1:1,n:Math.abs(m.n),d:m.d};
@@ -1391,6 +1485,9 @@ function build(){
   const gW=SlopeW(fg,CD.xs[0]+36,CD.y+88,vOf(gm),hlL,false);
   // the new card starts as a copy of the given slope (it flies in, then flips) unless the new slope can't come from flipping
   const flipIt=perp&&gm!==null, nW=SlopeW(fg,CD.xs[1]+30,CD.y+88,flipIt||!perp?vOf(gm):vOf(nm),hlL,flipIt);
+  const nQ=at('pp-q','?',CD.xs[1]+CD.w/2,CD.y+80), nQn=at('pp-qnote',perp?'flip it, change the sign':'the same as the given line',CD.xs[1]+CD.w/2,CD.y+128);
+  S(nQ,'opacity',0); S(nQn,'opacity',0);
+  const showNew=(t,d)=>{ nW.show(t,d); TL.add(t,.25,p=>{ S(nQ,'opacity',1-p); S(nQn,'opacity',1-p); }); };
 
   // ---- the work board: every line laid out (hidden), aligned on "=" within each step; it scrolls up as lines are added
   const wF=at('pp-frame','',WA.x,WA.y,bg); Object.assign(wF.style,{width:WA.w+'px',height:WA.h+'px'});
@@ -1415,9 +1512,10 @@ function build(){
   let plan;
   if(nm===null){ const v1={key:'v1',items:flat([XV(),EQ(),num('C',P.x,{cls:'vx'})]),src:{x:'c:v:x',eq:'c:v:eq',C:'g:px'},words:`Every point has $x = ${T(P.x)}$`,quiz:['C']};
     plan={steps:[{id:'fill',beats:[{name:'Write x = x₁',q:'A vertical line: every point on it has the same $x$. What is its equation?',say:`$x = ${T(P.x)}$: the vertical line through $${ptTex}$.`,lines:[v1]}]}]}; }
-  else plan=LF.plan({pts:[{x:P.x,y:P.y,sx:'px',sy:'py'}],m:nm,b:null,std:null,usePt:0,vertical:false},form);
+  else plan=LF.plan(thru==='pt'?{pts:[{x:P.x,y:P.y,sx:'px',sy:'py'}],m:nm,b:null,std:null,usePt:0,vertical:false}:
+    {pts:[],m:nm,b:P.y,std:null,usePt:0,vertical:false},form);
   const groups=[];
-  if(stdBeats.length) groups.push({id:'given',items:stdBeats.flatMap(b=>b.lines).map(l=>({spec:l}))});
+  if(stdBeats.length) groups.push({id:'new',items:stdBeats.flatMap(b=>b.lines).map(l=>({spec:l}))});
   plan.steps.forEach((st,i)=>groups.push({id:st.id,items:(i===0?[{tpl:tplForm}]:[]).concat(st.beats.flatMap(b=>b.lines).map(l=>({spec:l})))}));
   const TPL={};
   // the form's template sits pinned at the top of the board for the last steps (it doesn't scroll), so every piece
@@ -1460,7 +1558,7 @@ function build(){
   const toStage=(b,sc)=>({x:b.x+WA.x,y:b.y+WA.y-sc,w:b.w,h:b.h});
   const posIn=(L,pc)=>L.stage?(b=>({x:b.x-WA.x,y:b.y-WA.y+scroll,w:b.w,h:b.h}))(L.sb[pc.k]):LB[L.id+'-'+pc.k];
   const GB=g0.sb;
-  const SRC={m:{el:nW.val,box:()=>nW.box()},px:{el:ptX,box:()=>box(ptX)},py:{el:ptY,box:()=>box(ptY)}};
+  const SRC={m:{el:nW.val,box:()=>nW.box()},px:{el:ptX,box:()=>box(ptX)},py:{el:ptY,box:()=>box(ptY)},b:{el:ptB,box:()=>box(ptB)}};
   const resolve=ref=>{ if(!ref) return null; const [kind,a,b]=ref.split(':');
     if(kind==='g') return SRC[a]?{g:SRC[a]}:null;
     if(kind==='c'){ const L=TPL[a], pc=L&&L.byK[b]; return pc?{line:L,pc}:null; }
@@ -1515,15 +1613,16 @@ function build(){
   // ---- the timeline: a list of beats, each {name, step, q (asked before it), say (after it), play(t) → {end, fill},
   // quiz: answer boxes for its Your-turn beat (box, key: one answer box filled by a later beat's fill[key])}
   let t=0; const caps=[]; const cap=(tt,say,q)=>caps.push({t:tt,say:words(say),q:words(q)});
-  const steps=[]; const STEPNAME={given:'Find the slope of the given line',
-    new:perp?(gm!==null&&gm.zero?'Perpendicular slope: flip it (0 has no reciprocal)':gm===null?'Perpendicular slope: a vertical line’s is 0':'Perpendicular slope: flip it and change the sign'):'Parallel slope: the same slope',
-    find:'Find <em>b</em>: plug in the point',fill:nm===null?'Write the equation':form==='ps'?'Fill in point-slope form':'Fill in slope-intercept form'};
+  const steps=[]; const STEPNAME={q:'The question',forms:'The three forms',know:'What do we know?',pick:'Pick the form',
+    new:perp?(gm!==null&&gm.zero?'Find the slope: flip it (0 has no reciprocal)':gm===null?'Find the slope: perpendicular to vertical is 0':'Find the slope: flip it and change the sign'):'Find the slope: the same slope',
+    find:'Fill in the constants: find <em>b</em> first',fill:nm===null?'Write the equation':'Fill in the constants'};
   let lastStep=null;
   const beat=(name,step)=>{ TL.beat(t,name); stageAt.push(step); if(!steps.find(s=>s.id===step)) steps.push({id:step,name:STEPNAME[step]||step});
     if(step!==lastStep&&lastStep){ (marksT[lastStep]||[]).forEach(m=>{ if(!m.gone) m.mk.clear(t); }); const r=rules[lastStep]; if(r) TL.add(t,.45,p=>S(r,'transform',`scaleX(${p.toFixed(3)})`),E.out); }
     lastStep=step; curStep=step; };
   const seq=[], fills={}, later=[];
   const ptT=`(${T(P.x)}, ${T(P.y)})`, mT=m=>m===null?'\\text{undefined}':T(m);
+  const pushMark=(step,rec)=>(marksT[step]=marksT[step]||[]).push(rec);
 
   // board beats: scroll so the whole line shows, then play it (quiz: everything but the answers first)
   const boardBeat=(bt,step)=>{ const ls=bt.lines.map(l=>LN[l.key]);
@@ -1535,20 +1634,119 @@ function build(){
       play(tt,ph){ let e=tt+1.1; const lands={}; ls.forEach(L=>{ const r=playLine(L,tt,ph); e=Math.max(e,r.end); Object.entries(r.lands).forEach(([k,v])=>lands[L.id+'-'+k]=v); }); return {end:e,lands}; },
       lines:ls}; };
 
-  // 0. the problem
-  beat('The problem','given');
-  [gvF,gcap,wF,wcap].forEach(e=>fadeIn(e,0,.4)); cards.forEach(c=>{ fadeIn(c.fr,.1,.4); fadeIn(c.tt,.1,.4); });
-  fadeIn(llab,.2,.4); fadeIn(g0.el,.2,.5,8); fadeIn(badge,.3,.4);
+  // 0. the question: why we're here
+  beat('The question','q');
+  fadeIn(gvF,0,.4); fadeIn(gcap,.1,.4); fadeIn(qs,.2,.6,8);
   axes.reveal(TL,.1,1.1); TL.add(.1,1,p=>grid.forEach(l=>S(l,'opacity',p)));
   TL.add(.7,1,p=>S(gL,'strokeDashoffset',(1-p).toFixed(3)),E.inOut);
-  fadeIn(plab,1.3,.4); fadeIn(ptEq,1.3,.4,8);
   TL.add(1.4,.5,p=>{ S(ptG,'opacity',p>0?1:0); A(ptG,'transform',`translate(${X(px)},${Y(py)}) scale(${E.back(p).toFixed(3)})`); },E.lin);
   TL.add(1.6,1,p=>S(halo,'opacity',.9*Math.sin(p*Math.PI)),E.lin); fadeIn(ptLab,1.7,.4);
   t=2.4;
-  const firstQ=`Find the line through $${ptT}$ that is ${perp?'perpendicular':'parallel'} to the given line. What do we need first?`;
+  const firstQ='A line can be written in three forms. Which one do we know information about?', firstSay='This is why we’re here: the equation of a new line.';
 
-  // 1. the slope of the given line
-  stdBeats.forEach(bt=>seq.push(boardBeat(bt,'given')));
+  // 1. the three forms (James, 2026-10-21: "start thinking about the three forms first. Which one do we know information
+  // about? Include standard form even though we'll never use it."). Each card has its blank version and, when the question
+  // fills some of its blanks, a version for each number put in (the pieces slide over as a number goes in).
+  const KN={m:'soon',x1:thru==='pt'?'ok':'no',y1:thru==='pt'?'ok':'no',b:thru==='b'?'ok':thru==='same'?(G.kind==='std'?'soon':'ok'):'no',A:'no',B:'no',C:'no'};
+  const FNAME={si:'Slope-intercept form',ps:'Point-slope form',std:'Standard form'};
+  const FNEED={si:'the slope and the y-intercept',ps:'the slope and a point',std:'A, B and C'};
+  const FSLOT={si:['m','b'],ps:['m','y1','x1'],std:['A','B','C']};
+  const FORD={si:KN.b==='ok'?['b']:[],ps:KN.x1==='ok'?['x1','y1']:[],std:[]};
+  const FVAL={x1:P.x,y1:P.y,b:P.y}, FCLS={x1:'vx',y1:'vy',b:'vy'};
+  const cardFilled=(f,done)=>flat(cardItems(f,Yt).map(i=>done.includes(i.k)?num(i.k,FVAL[i.k],{paren:true,cls:FCLS[i.k]}):i));
+  const FH=140, fcards=['si','ps','std'].map((f,i)=>{ const x=GV.x, y=CD.y+i*(FH+10), w=GV.w;
+    const fr=at('pp-fcard','',x,y,bg); Object.assign(fr.style,{width:w+'px',height:FH+'px'});
+    const wr=hd('div','lay',fg);
+    at('pp-ctitle',FNAME[f],x+18,y+16,wr); at('pp-need','needs '+FNEED[f],x+18,y+40,wr);
+    const bdg=at('pp-fbadge','',x+w-14,y+12,wr);
+    const vers=[]; for(let j=0;j<=FORD[f].length;j++) vers.push(mkEq('k'+f+j,j?cardFilled(f,FORD[f].slice(0,j)):cardItems(f,Yt),wr,30));
+    const EX0=x+214, EW=w-214-24;
+    const meas=()=>vers.map(v=>{ v.el.style.left='0px'; v.el.style.top='0px'; const b=box(v.el), e=box(v.P('eq')); return {eo:e.x-b.x,w:b.w,h:b.h}; });
+    let ms=meas(); const wmax=Math.max(...ms.map(m=>m.w)); if(wmax>EW){ vers.forEach(v=>{ v.fs=30*EW/wmax; v.el.style.fontSize=v.fs.toFixed(1)+'px'; }); ms=meas(); }
+    const lw=ms[ms.length-1], eqX=EX0+(EW-lw.w)/2+lw.eo;
+    vers.forEach((v,j)=>{ v.el.style.left=(eqX-ms[j].eo)+'px'; v.el.style.top=(y+62-ms[j].h/2)+'px'; if(j) v.pcs.forEach(pc=>S(pc.el,'opacity',0)); });
+    const vF=vers[vers.length-1];
+    const slots=FSLOT[f].map(k=>{ const st=KN[k], ks=[k,k+'L',k+'R'].map(q=>vF.P(q)).filter(Boolean), sb=unionB(ks.map(box));
+      const lab=at('pp-slotlab '+st,st==='ok'?'✓':'?',0,0,wr), lb=box(lab); lab.style.left=(sb.x+sb.w/2-lb.w/2)+'px'; lab.style.top=(y+112-lb.h/2)+'px';
+      let ring=null; if(st==='ok'){ ring=hd('div','pp-sring',wr); Object.assign(ring.style,{left:(sb.x-5)+'px',top:(sb.y-4)+'px',width:(sb.w+10)+'px',height:(sb.h+8)+'px'}); S(ring,'opacity',0); }
+      S(lab,'opacity',0); return {k,st,lab,ring}; });
+    S(fr,'opacity',0); S(wr,'opacity',0); return {f,fr,wr,bdg,vers,slots,x,y,w}; });
+  const FC=f=>fcards.find(c=>c.f===f);
+  // a number goes into a card: the pieces of the old version slide to their new places and the number appears where it landed
+  const morph=(a,b,t,fresh)=>{ a.pcs.forEach(pc=>TL.add(t,.04,p=>S(pc.el,'opacity',1-p)));
+    b.pcs.forEach(pc=>{ const o=a.byK[pc.k]; if(fresh.includes(pc.k)||!o) fadeIn(pc.el,t,.25); else travel(pc.el,ctr(box(o.el)),ctr(box(pc.el)),1,t,.35,0); }); };
+  // Show where it came from: a number in the question lights, flies into a card's blank, and stays underlined to the end of the step
+  const intoCard=(c,j,k,src,tt)=>{ const r=MT.fly.lit(TL,top,{html:KX(T(FVAL[k])),cls:'ppfly',box:box(src),el:src,to:ctr(box(c.vers[j].P(k))),t:tt,d:FD,pad:4});
+    r.fly.style.fontSize=(c.vers[j].fs||30)+'px'; pushMark('know',{mk:r}); morph(c.vers[j],c.vers[j+1],r.land,[k,k+'L',k+'R']); return r.land; };
+  seq.push({name:'The three forms',step:'forms',
+    say:'Slope-intercept needs the slope and the y-intercept. Point-slope needs the slope and a point. Standard form needs $A$, $B$ and $C$.',
+    play(tt){ fcards.forEach((c,i)=>{ fadeIn(c.fr,tt+i*.3,.4,10); fadeIn(c.wr,tt+i*.3,.4,10); }); return {end:tt+1.4}; }});
+
+  // 2. what do we know? Underline what the question gives us and put it into the forms; the slope waits
+  seq.push({name:'The word '+kw,step:'know',q:`What does the question tell us? Look at the word “${kw}”.`,
+    say:`“${perp?'Perpendicular':'Parallel'}” tells us how to get the slope from the given line. We’ll come back to it, so $m$ stays a blank for now.`,
+    play(tt){ pushMark('new',{mk:MT.fly.mark(TL,top,{box:box(kwEl),el:kwEl,t:tt,land:tt+.7,pad:4})});
+      const ms=fcards.flatMap(c=>c.slots.filter(s=>s.k==='m')); ms.forEach((s,i)=>fadeIn(s.lab,tt+.8+i*.15,.3));
+      return {end:tt+1.6}; }});
+  seq.push({name:thru==='pt'?'The point':thru==='b'?'The y-intercept':'The same y-intercept',step:'know',q:'What else does the question give us?',
+    say:thru==='pt'?`A point on the new line: $${ptT}$. Point-slope form has room for it: $x_1 = ${T(P.x)}$, $y_1 = ${T(P.y)}$.`:
+      thru==='b'?`The y-intercept: $b = ${T(P.y)}$. Slope-intercept form has room for it.`:
+      KN.b==='ok'?`The same y-intercept as the given line: $b = ${T(P.y)}$. Slope-intercept form has room for it.`:
+      'The same y-intercept as the given line. Standard form hides it: we’ll see $b$ once we get $y$ by itself.',
+    play(tt){ let e=tt+1;
+      if(thru==='pt'){ const c=FC('ps'); let t1=intoCard(c,0,'x1',ptX,tt); t1=intoCard(c,1,'y1',ptY,t1+.15); e=t1+.5; }
+      else if(thru==='b'){ e=intoCard(FC('si'),0,'b',ptB,tt)+.5; }
+      else { pushMark('know',{mk:MT.fly.mark(TL,top,{box:box(thEl),el:thEl,t:tt,land:tt+.6,pad:4})});
+        if(KN.b==='ok'){ const t2=sameB(tt+.8,g0,'b','know'); e=intoCard(FC('si'),0,'b',ptB,t2+.25)+.5; }
+        else { const s=FC('si').slots.find(q=>q.k==='b'); fadeIn(s.lab,tt+.8,.3); e=tt+1.4; } }
+      if(graph) TL.add(tt+.2,1.3,p=>S(halo,'opacity',.9*Math.sin(p*Math.PI)),E.lin);
+      return {end:e}; }});
+  // b from the given line into the question's "b = …" chip (the same y-intercept)
+  function sameB(tt,L,k,step){
+    const pc=L.byK[k], ib=pc?(L.stage?null:LB[L.id+'-'+k]):null, sb=pc?(L.stage?GB[k]:toStage(ib,scroll)):(L.stage?box(L.el):toStage(IB(L.el),scroll));
+    const land=tt+LEAD+FD, mk=ib?MT.fly.mark(TL,hlW,{box:ib,el:pc.el,t:tt,land}):MT.fly.mark(TL,top,{box:sb,el:pc?pc.el:null,t:tt,land,pad:6});
+    const rec={mk,y:ib?ib.y:0}; if(ib) inMarks.push(rec); pushMark(step,rec);
+    const chip=MT.fly(TL,top,{html:KX(T(P.y)),cls:'litchip ppfly',from:ctr(sb),to:ctr(box(ptB)),t:tt+LEAD,d:FD,lift:50}); chip.style.fontSize=(g0.fs*1.21||32)+'px';
+    TL.add(land-.03,.2,p=>S(bChip,'opacity',p)); return land; }
+  seq.push({name:'What’s missing?',step:'know',q:'Which blanks are filled in, and which are still missing?',
+    say:(thru==='pt'?'Point-slope is only missing $m$. Slope-intercept is missing $m$ and $b$.':KN.b==='ok'?'Slope-intercept is only missing $m$. Point-slope is missing $m$ and the point.':
+      'Slope-intercept is only missing $m$ and $b$, and we can find both. Point-slope is missing the point too.')+' Standard form: we don’t know $A$, $B$ or $C$.',
+    qboxes:()=>fcards.flatMap(c=>c.slots.filter(s=>s.k!=='m'&&!(c.f==='si'&&s.k==='b'&&thru==='same'&&KN.b==='soon')).map(s=>({b:box(s.lab),key:'k'+c.f+s.k}))),
+    play(tt){ const fill={}; fcards.forEach((c,i)=>{ const t0=tt+i*.7, ss=c.slots.filter(s=>s.k!=='m'&&!(s.st==='soon'));
+        hl(hlL,unionB(c.slots.map(s=>box(s.lab))),t0,t0+.8,8);
+        ss.forEach((s,j)=>{ const t1=t0+.15+j*.15; fadeIn(s.lab,t1,.3); if(s.ring) fadeIn(s.ring,t1,.3); fill['k'+c.f+s.k]=t1; }); });
+      return {end:tt+3*.7+.5,fill}; }});
+
+  // 3. pick the form
+  { const pc=FC(best), ours=FC(form);
+    seq.push({name:'Most direct: '+(best==='si'?'slope-intercept':'point-slope'),step:'pick',qname:'Your turn: pick the form',q:'Which form is the most direct?',
+      say:(best==='ps'?'Point-slope: the point is already in. Once we have the slope, we’re done.':'Slope-intercept: the y-intercept '+(KN.b==='ok'?'is already in':'is easy to find')+'. Once we have the slope, we’re done.')+
+        (form!==best?' We’ll use the other form anyway and see what it costs.':''),
+      qboxes:()=>fcards.map(c=>({b:{x:c.x+c.w-14-140,y:c.y+12,w:140,h:24},key:'b'+c.f,out:c.f!==best})),
+      play(tt){ setHTML(pc.bdg,'Most direct'); S(pc.bdg,'opacity',0); TL.at(tt+.1,past=>pc.fr.classList.toggle('best',past)); fadeIn(pc.bdg,tt+.15,.35,6);
+        fcards.filter(c=>c!==pc&&c!==ours).forEach(c=>TL.add(tt+.4,.4,p=>{ S(c.wr,'opacity',1-.6*p); S(c.fr,'opacity',1-.6*p); }));
+        if(form!==best){ setHTML(ours.bdg,'Our pick'); ours.bdg.classList.add('pick'); S(ours.bdg,'opacity',0); fadeIn(ours.bdg,tt+.6,.35,6); }
+        const fill={}; fcards.forEach(c=>fill['b'+c.f]=c===pc?tt+.15:tt+.4); return {end:tt+1.1,fill}; }}); }
+
+  // 4. the slope: first the ghost line (what the word means on the graph), then the given line's slope, then the new one
+  function ghost(t0){ const gh=seg('ghost'); gh._op=.9; S(gh,'opacity',0); ghosts.push(gh); const d=1.9, f=K.foot, u=K.u;
+    const setAt=(bx,by,dir)=>{ const c=PP.clip(bx,by,dir[0],dir[1],.3); if(!c) return; A(gh,'x1',X(c[0][0])); A(gh,'y1',Y(c[0][1])); A(gh,'x2',X(c[1][0])); A(gh,'y2',Y(c[1][1])); };
+    if(!perp){ TL.add(t0,.3,p=>{ S(gh,'opacity',.9*p); setAt(f[0],f[1],K.gd); }); TL.add(t0+.35,d,p=>setAt(lerp(f[0],px,p),lerp(f[1],py,p),K.gd),E.inOut); return t0+.35+d+.2; }
+    let s0=-4; for(const sx of [-4,4,-3,3,-2,2,-1,1]){ const q=[f[0]+sx*u[0],f[1]+sx*u[1]]; if(Math.abs(q[0])<7.4&&Math.abs(q[1])<7.4){ s0=sx; break; } }
+    const Q=p=>[f[0]+s0*(1-p)*u[0],f[1]+s0*(1-p)*u[1]], nn=Math.hypot(K.nd[0],K.nd[1]);
+    const rm=sv('path',{class:'pp-right ghost'},Pn.layers.top); rm._op=1; S(rm,'opacity',0); ghosts.push(rm);
+    const drawR=q=>{ const a=.5, v=[K.nd[0]/nn*a,K.nd[1]/nn*a], w=[u[0]*a,u[1]*a];
+      A(rm,'d',`M${X(q[0]+w[0])} ${Y(q[1]+w[1])} L${X(q[0]+w[0]+v[0])} ${Y(q[1]+w[1]+v[1])} L${X(q[0]+v[0])} ${Y(q[1]+v[1])}`); };
+    TL.add(t0,.3,p=>{ S(gh,'opacity',.9*p); S(rm,'opacity',p); const q=Q(0); setAt(q[0],q[1],K.nd); drawR(q); });
+    TL.add(t0+.35,d,p=>{ const q=Q(p); setAt(q[0],q[1],K.nd); drawR(q); },E.inOut); return t0+.35+d+.2; }
+  seq.push({name:perp?'Perpendicular':'Parallel',step:'new',anchor:'word',q:`Now the slope. What does “${kw}” mean on the graph?`,
+    say:perp?'Perpendicular: the new line crosses at a right angle. Its slope is the opposite reciprocal of the given slope (flip it, change the sign).':
+      'Parallel: the new line runs alongside and never crosses, so it has the same slope as the given line.',
+    play(tt){ hl(hlL,box(kwEl),tt,tt+1.8,4); fadeIn(nQ,tt+.3,.4); fadeIn(nQn,tt+.3,.4); let e=tt+1.4; if(graph) e=Math.max(e,ghost(tt+.4)); return {end:e}; }});
+  stdBeats.forEach(bt=>seq.push(boardBeat(bt,'new')));
+  if(thru==='same'&&KN.b==='soon') seq.push({name:'The same y-intercept',step:'new',q:'Now we can see the given line’s y-intercept. What is $b$?',
+    say:`The same y-intercept as the given line: $b = ${T(P.y)}$.`,
+    play(tt){ const L=LN[stdBeats.length>1?'s2':'s1'], k=stdBeats.length>1?'b':'C'; return {end:sameB(tt,L,k,'new')+.4}; }});
   const gTri=geo?Stairs(geo.L,geo.s):null;
   { // where the slope is in the equation: its coefficient (or just in front of x: the invisible 1), on the board for standard form
     let srcF=null;
@@ -1561,12 +1759,12 @@ function build(){
     const say=gm===null?`Every point has $x = ${T(G.a)}$: straight up and down. The run is 0, so the slope is undefined.`:
       gm.zero?`There’s no $x$ term: a flat line. Its rise is 0, so $m = 0$.`:
       (G.kind==='std'?`Now it’s in $y = mx + b$ form: $m = ${T(gm)}$.`:`$m$ is the number in front of $x$: $m = ${T(gm)}$.`)+(p?` Rise ${fmt(rs)}, run ${fmt(rn)}.`:'');
-    seq.push({name:'Slope of the given line',step:'given',q:G.kind==='std'?'What is the slope of the given line?':'What is the slope of the given line?',say,
+    seq.push({name:'The given line',step:'new',q:G.kind==='std'?'What is the slope of the given line?':'What is the slope of the given line?',say,
       quiz:{box:()=>gW.box(),key:'g'},
       play(tt){ let land;
         if(srcF){ const s=srcF();
           const mk=s.inner?MT.fly.mark(TL,hlW,{box:s.inner,el:s.el,t:tt,land:tt+LEAD+FD}):MT.fly.mark(TL,top,{box:s.box,el:s.el,t:tt,land:tt+LEAD+FD,pad:6});
-          const rec={mk,y:s.inner?s.inner.y:0}; if(s.inner) inMarks.push(rec); (marksT.given=marksT.given||[]).push(rec);
+          const rec={mk,y:s.inner?s.inner.y:0}; if(s.inner) inMarks.push(rec); (marksT.new=marksT.new||[]).push(rec);
           const chip=MT.fly(TL,top,{html:KX(gm.tex()),cls:'litchip ppfly',from:ctr(s.box),to:ctr(gW.vbox()),t:tt+LEAD,d:FD,lift:50}); chip.style.fontSize='40px';
           land=tt+LEAD+FD; gW.show(land-.03,.15); }
         else { hl(hlL,box(g0.el),tt,tt+1.2,6); gW.show(tt+.5,.4); flash(gW.val,tt+.5,1.4); land=tt+.6; }
@@ -1580,7 +1778,7 @@ function build(){
   // 2. the new slope
   const nq=perp?'Perpendicular lines meet at a right angle. What will the new slope be?':'Parallel lines never cross. What will the new slope be?';
   const mv=geo?Stairs(geo.L,geo.s):null;
-  const mvBase=p=>[lerp(geo.A[0],px,p),lerp(geo.A[1],py,p)];
+  const mvBase=p=>[lerp(geo.A[0],geo.mb[0],p),lerp(geo.A[1],geo.mb[1],p)]; // the copy slides from the given line to its place by the point
   const extras=tt=>{ // the right angle where the lines meet, or the parallel marks
     if(perp&&K.cross){ const I=K.cross, a=.55, ug=K.gd, un=K.nd, ng=Math.hypot(...ug), nn=Math.hypot(...un);
       const u=[ug[0]/ng*a,ug[1]/ng*a], v=[un[0]/nn*a,un[1]/nn*a];
@@ -1602,13 +1800,13 @@ function build(){
     seq.push(q2({name:'Same slope',step:'new',q:why&&mv?'So what is the parallel slope?':nq,
       say:nm===null?'Parallel to a vertical line means vertical too: the slope is still undefined.':`Parallel lines have the same slope: $m = ${T(nm)}$.`,
       play(tt){ const r=MT.fly.lit(TL,top,{html:KX(mT(gm)),cls:'ppfly',box:gW.vbox(),el:gW.val,to:ctr(nW.vbox()),t:tt,d:FD,pad:6});
-        r.fly.style.fontSize='40px'; (marksT.new=marksT.new||[]).push({mk:r}); nW.show(r.land-.03,.15);
+        r.fly.style.fontSize='40px'; (marksT.new=marksT.new||[]).push({mk:r}); showNew(r.land-.03,.15);
         let e=r.land+.3; if(!(why&&mv)){ growNew(e,.9); e+=1; } e=extras(e); return {end:e,fill:{n:r.land}}; }}));
   } else if(gm===null){ // perpendicular to a vertical line: flat
     if(why&&mv) seq.push(q2({name:'Turn it a quarter turn',step:'new',q:nq,say:'A quarter turn: the straight-up rise lies flat. A flat line has rise 0.',
       play(tt){ return {end:turn(tt)}; }}));
     seq.push(q2({name:'Perpendicular slope',step:'new',q:why&&mv?'So what is the perpendicular slope?':nq,say:'Perpendicular to a vertical line is a flat (horizontal) line: $m = 0$.',
-      play(tt){ nW.show(tt+.2,.35); flash(nW.val,tt+.2,1.4); growNew(tt+.6,.9); const e=extras(tt+1.5); return {end:e,fill:{n:tt+.3}}; }}));
+      play(tt){ showNew(tt+.2,.35); flash(nW.val,tt+.2,1.4); growNew(tt+.6,.9); const e=extras(tt+1.5); return {end:e,fill:{n:tt+.3}}; }}));
   } else {
     if(why&&mv){ const s=geo.s, Lg=geo.L, rot=geo.rot*Math.PI/180;
       const run2=Math.round(-Math.sin(rot)*s*Lg.p), rise2=Math.round(Math.sin(rot)*s*Lg.q);
@@ -1621,7 +1819,7 @@ function build(){
       say:gm.zero?'Write $0$ as $\\frac{0}{1}$ and flip it: $\\frac{1}{0}$. We can’t divide by 0, so the slope is undefined: a vertical line.':
         (whole?`Write $${T(ab)}$ as $\\frac{${ab.n}}{1}$ (the invisible 1), then flip it upside down: $\\frac{1}{${ab.n}}$.`:`Flip it upside down: $\\frac{${ab.n}}{${ab.d}}$ becomes $\\frac{${ab.d}}{${ab.n}}$.`)+' That’s the reciprocal.',
       play(tt){ const r=MT.fly.lit(TL,top,{html:KX(gm.tex()),cls:'ppfly',box:gW.vbox(),el:gW.val,to:ctr(nW.vbox()),t:tt,d:FD,pad:6});
-        r.fly.style.fontSize='40px'; (marksT.new=marksT.new||[]).push({mk:r}); nW.show(r.land-.03,.15);
+        r.fly.style.fontSize='40px'; (marksT.new=marksT.new||[]).push({mk:r}); showNew(r.land-.03,.15);
         let e=r.land+.25; if(whole){ nW.inv(e,.7); e+=1.1; } nW.flip(e,1.3); e+=1.4;
         if(gm.zero){ nW.zero(e,CD.w-30-10); growNew(e+.5,.9); e=extras(e+1.5); return {end:e,fill:{n:e-.5}}; }
         return {end:e}; }}));
@@ -1631,7 +1829,7 @@ function build(){
   }
   function turn(tt){ TL.add(tt,.3,p=>{ S(mv.g,'opacity',p); mv.draw(geo.A,0,1,1,1); },E.out);
     TL.add(tt+.35,.9,p=>mv.draw(mvBase(p),0,1,1,1),E.inOut);
-    TL.add(tt+1.35,1.5,p=>mv.draw([px,py],geo.rot*p,1,1,1),E.inOut);
+    TL.add(tt+1.35,1.5,p=>mv.draw(geo.mb,geo.rot*p,1,1,1),E.inOut);
     // the label whose sign flipped pops
     TL.add(tt+2.9,.45,p=>{ const k=String(1+.3*Math.sin(p*Math.PI)); if(geo.rot===90) S(mv.t1,'scale',k); else S(mv.t2,'scale',k); },E.lin);
     return tt+3.4; }
@@ -1642,9 +1840,14 @@ function build(){
 
   // ---- play the list
   const finalQ=`Done: the ${perp?'perpendicular':'parallel'} line through $${ptT}$. Switch to ${perp?'parallel':'perpendicular'} to compare.`;
+  const finalQ2=thru==='pt'?finalQ:`Done: the ${kw} line with y-intercept $${T(P.y)}$. Switch to ${perp?'parallel':'perpendicular'} to compare.`;
   seq.forEach((d,i)=>{
-    const nx=seq[i+1];
-    if(i===0) cap(t,'',firstQ);
+    const nx=seq[i+1], pv=seq[i-1];
+    if(i===0) cap(t,firstSay,firstQ);
+    if(d.step==='new'&&pv&&pv.step!=='new'){ // the forms make room: the slope cards and the work board come in
+      fcards.forEach(c=>{ const o=c.f===best||c.f===form?1:.4; TL.add(t+GAP,.4,p=>{ S(c.wr,'opacity',o*(1-p)); S(c.fr,'opacity',o*(1-p)); }); });
+      cards.forEach((c,j)=>{ fadeIn(c.fr,t+GAP+.3+j*.12,.4,8); fadeIn(c.tt,t+GAP+.3+j*.12,.4,8); }); fadeIn(wF,t+GAP+.45,.4); fadeIn(wcap,t+GAP+.45,.4); t+=.8; }
+    if(d.anchor) anchors[d.anchor]=TL.beats.length;
     if(d.start){ // a board beat
       if(d.hasQ){ t+=GAP; beat('Your turn: '+d.name,d.step); const t0=d.start(t); const pr=d.pre(t0);
         t=pr.end+.1; cap(t,'Your turn: write your answers in the boxes, then click to check.',d.q);
@@ -1653,16 +1856,18 @@ function build(){
         t=r.end+.3; }
       else { t+=GAP; beat(d.name,d.step); const t0=d.start(t); const r=d.play(t0,'all'); t=r.end+.3; }
     } else {
-      if(quiz&&d.quiz){ t+=GAP; beat(d.quiz.key==='g'?'Your turn: the given slope':'Your turn: the new slope',d.step); later.push({bf:d.quiz.box,key:d.quiz.key,t:t+.1}); t+=.7;
+      if(quiz&&d.qboxes){ t+=GAP; beat(d.qname||'Your turn: '+d.name.toLowerCase(),d.step); const t0=t; later.push(...d.qboxes().map(q=>({bf:()=>q.b,key:q.key,out:q.out,t:t0+.1}))); t+=.7;
+        cap(t,'Your turn: write your answers in the boxes, then click to check.',d.q); }
+      else if(quiz&&d.quiz){ t+=GAP; beat(d.quiz.key==='g'?'Your turn: the given slope':'Your turn: the new slope',d.step); later.push({bf:d.quiz.box,key:d.quiz.key,t:t+.1}); t+=.7;
         cap(t,d.quiz.key==='g'?'Your turn: write the slope in the box, then click to check.':'Your turn: write the new slope in the box, then click to check.',d.q); }
       t+=GAP; beat(d.name,d.step); const r=d.play(t); if(r.fill) Object.assign(fills,r.fill); t=r.end+.3;
     }
     // the template for the last step appears as step 2 ends, so the class can see where the numbers will go
     if(d.step==='new'&&(!nx||nx.step!=='new')){ const f=rows.find(L=>!LN.s1||(L!==LN.s1&&L!==LN.s2)), to=f?Math.max(0,f.top-PIN-4):scroll;
       scrollTo(t-.25,to,PIN); fadeIn(tplL.wd,t-.25,.4); tplL.pcs.concat(tplL.ctn).forEach(pc=>fadeIn(pc.el,t-.25,.4)); t+=.2; }
-    cap(t,d.say,nx?nx.q:finalQ);
+    cap(t,d.say,nx?nx.q:finalQ2);
   });
-  later.forEach(b=>MT.quiz.box(TL,hlL,b.bf(),{t:b.t,fill:fills[b.key],minW:60,pad:8}));
+  later.forEach(b=>MT.quiz.box(TL,hlL,b.bf(),Object.assign({t:b.t,minW:b.key.length>1&&b.key[0]==='k'?30:60,pad:b.key[0]==='k'?4:8},b.out?{out:fills[b.key]}:{fill:fills[b.key]})));
   // the answer: a green ring around the last line, and the new line on the plane pulses
   const last=rows[rows.length-1];
   if(last&&!last.tpl){ const b=unionB(last.pcs.map(pc=>LB[last.id+'-'+pc.k])), ring=hd('div','pp-ring',inner);
@@ -1683,11 +1888,11 @@ function paintSteps(steps){
   steps.forEach((s,i)=>{ const li=hd('li','',ol,`<b>${i+1}</b><span>${s.name}</span>`); li.dataset.stage=s.id; li.tabIndex=0; li.setAttribute('role','button'); li.title='Jump to this step';
     li.addEventListener('click',()=>jumpTo(s.id)); li.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); e.stopPropagation(); jumpTo(s.id); } }); });
 }
-const startOf=step=>{ const j=stageAt.indexOf(step); return j<0?null:j===0?TL.beats[0].end:TL.beats[j-1].end; };
+const startOf=step=>{ const j=anchors[step]!=null?anchors[step]:stageAt.indexOf(step); return j<0?null:j===0?TL.beats[0].end:TL.beats[j-1].end; };
 function jumpTo(step){ const t=startOf(step); if(t==null) return; TL.seek(t); jumped={t:TL.time,step}; transport.sync(); }
 function showStage(){
   if(jumped&&Math.abs(TL.time-jumped.t)>1e-6) jumped=null;
-  const cur=jumped?jumped.step:TL.beats.length?stageAt[TL.beatIndex()]:'given', finished=TL.time>=TL.dur-1e-3;
+  const cur=jumped?jumped.step:TL.beats.length?stageAt[TL.beatIndex()]:'q', finished=TL.time>=TL.dur-1e-3;
   const lis=[...document.querySelectorAll('#stages li')], n=lis.findIndex(li=>li.dataset.stage===cur);
   lis.forEach((li,i)=>{ li.classList.toggle('now',i===n&&!finished); li.classList.toggle('done',i<n||finished&&i<=n); });
 }
@@ -1701,40 +1906,56 @@ function rebuild(keep){
   else TL.seek(TL.beats[0].end);
   // the step list follows the new lesson: parked at the start of the step that changed, that step is the current one
   const ks=keep&&keep!=='time'?(startOf(keep)!=null?keep:'fill'):null;
-  jumped=ks&&Math.abs(TL.time-startOf(ks))<1e-6?{t:TL.time,step:ks}:null;
+  jumped=ks&&Math.abs(TL.time-startOf(ks))<1e-6?{t:TL.time,step:ks==='word'?'new':ks}:null;
   stage.classList.remove('swap'); void stage.offsetWidth; if(keep) stage.classList.add('swap');
   transport.sync();
 }
-function read(lineSrc,ptSrc,kind){ return PP.make(PP.readLine(lineSrc),PP.readPoint(ptSrc),kind); }
+function read(lineSrc,ptSrc,kind){ const G=PP.readLine(lineSrc), th=store.thru||'pt';
+  if(th==='pt') return PP.make(G,PP.readPoint(ptSrc),kind,{mode:'pt'});
+  return PP.make(G,null,kind,th==='b'?{mode:'b',b:PP.readNum(ptSrc)}:{mode:'same'}); }
+const ptField=()=>store.thru==='b'?'b':'pt';
 function showErr(msg){ $('err').textContent=msg; $('err').hidden=!msg; }
 function go(){
   let k; try{ k=read($('line').value,$('pt').value,store.kind); }catch(e){ showErr(e.message); return false; }
-  showErr(''); K=k; store.line=$('line').value; store.pt=$('pt').value; save(); paintPresets();
+  showErr(''); K=k; store.line=$('line').value; if(store.thru!=='same') store[ptField()]=$('pt').value; save(); paintPresets();
   stepList=build(); paintSteps(stepList); TL.seek(TL.beats[0].end); transport.sync(); return true;
 }
 function setKind(kind){
   if(kind===store.kind) return;
-  let k; try{ k=read(store.line,store.pt,kind); }catch(e){ showErr(e.message); return; }
-  showErr(''); store.kind=kind; save(); K=k; paintKind(); rebuild('new');
+  let k; try{ k=read(store.line,store[ptField()],kind); }catch(e){ showErr(e.message); return; }
+  showErr(''); store.kind=kind; save(); K=k; paintKind(); rebuild('word');
 }
-function setForm(f){ if(f===store.form) return; store.form=f; save(); paintForms(); if(K) rebuild(K.nm===null?'fill':f==='si'?'find':'fill'); }
+function setForm(f){ if(f===store.form) return; store.form=f; save(); paintForms(); if(K) rebuild('pick'); }
+function paintThru(){ const th=store.thru||'pt'; $('thru').value=th; $('pt').hidden=th==='same';
+  $('pt').value=th==='same'?'':store[ptField()]; $('pt').placeholder=th==='b'?'−2':'(4, −1)';
+  $('pt').setAttribute('aria-label',th==='b'?'the y-intercept':'the point'); }
 function paintKind(){ document.querySelectorAll('#kind button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.k===store.kind))); }
-function paintForms(){ document.querySelectorAll('#forms .chip').forEach(c=>c.setAttribute('aria-pressed',String(c.dataset.f===store.form))); }
-function paintPresets(){ document.querySelectorAll('#presets .chip').forEach((c,i)=>{ const p=PRESETS[i]; c.setAttribute('aria-pressed',String(p.line===store.line&&p.pt===store.pt)); }); }
-PRESETS.forEach(p=>{ const b=hd('button','chip',$('presets'),`${p.line.replace(/(\d)\/(\d)/g,'$1⁄$2')} · ${p.pt}`); b.type='button';
-  b.addEventListener('click',()=>{ $('line').value=p.line; $('pt').value=p.pt; if(!go()){ /* a preset can't fail for one kind and pass for the other except parallel through a point on the line */ } }); });
+function paintForms(){ $('formsel').value=store.form==='ps'||store.form==='si'?store.form:'best'; }
+function paintPresets(){ const i=PRESETS.findIndex(p=>{ const th=p.thru||'pt';
+  return p.line===store.line&&th===store.thru&&(th==='same'||(th==='b'?p.b===store.b:p.pt===store.pt)); }); $('ex').value=i<0?'':String(i); }
+PRESETS.forEach((p,i)=>{ const o=hd('option','',$('ex'),presetLabel(p)); o.value=String(i); });
+$('ex').addEventListener('change',()=>{ const p=PRESETS[+$('ex').value]; if(!$('ex').value||!p) return;
+  store.thru=p.thru||'pt'; if(p.thru==='b') store.b=p.b; else if(!p.thru) store.pt=p.pt; if(p.kind) store.kind=p.kind;
+  $('line').value=p.line; paintThru(); paintKind(); go(); });
+$('thru').addEventListener('change',()=>{ store.thru=$('thru').value; save(); paintThru(); if(store.thru==='same') go(); else { $('pt').focus(); $('pt').select(); } });
+$('graph').checked=store.graph!==false; $('graph').addEventListener('change',()=>{ store.graph=$('graph').checked; save(); if(K) rebuild(null); });
 $('form').addEventListener('submit',e=>{ e.preventDefault(); go(); });
 document.querySelectorAll('#kind button').forEach(b=>b.addEventListener('click',()=>setKind(b.dataset.k)));
-document.querySelectorAll('#forms .chip').forEach(c=>c.addEventListener('click',()=>setForm(c.dataset.f)));
+$('formsel').addEventListener('change',()=>setForm($('formsel').value));
+// "More options" remembers whether it was left open (this browser only)
+try{ $('more').open=localStorage.getItem('mt-pp-more')==='open'; }catch(e){}
+$('more').addEventListener('toggle',()=>{ try{ localStorage.setItem('mt-pp-more',$('more').open?'open':'shut'); }catch(e){} });
 $('why').checked=!!store.why;
 $('why').addEventListener('change',()=>{ store.why=$('why').checked; save(); if(K) rebuild('new'); });
 MT.quiz.bind($('quiz'),()=>{ if(K) rebuild(null); });
 MT.notation.bind($('mt-notation'),()=>{ if(K) rebuild('time'); });
 if(window.MT_TEST) window.__pp={TL,get K(){return K;},go,setKind,setForm,rebuild,PRESETS,get stageAt(){return stageAt;},
-  load(line,pt,kind,form){ $('line').value=line; $('pt').value=pt; if(kind) store.kind=kind; if(form) store.form=form; paintKind(); paintForms(); return go(); },
+  load(line,pt,kind,form,o={}){ if(o.thru) store.thru=o.thru; if(o.graph!=null) store.graph=o.graph;
+    if(kind) store.kind=kind; if(form) store.form=form; $('graph').checked=store.graph!==false;
+    $('line').value=line; paintThru(); if(store.thru!=='same') $('pt').value=pt; paintKind(); paintForms(); return go(); },
   setWhy(v){ store.why=v; $('why').checked=v; if(K) rebuild('new'); }};
-fontsReady().then(()=>{ ST.fit(); $('line').value=store.line; $('pt').value=store.pt; paintKind(); paintForms();
-  if(!go()){ store.kind='perp'; $('line').value=PRESETS[0].line; $('pt').value=PRESETS[0].pt; paintKind(); go(); } });
+fontsReady().then(()=>{ ST.fit(); store.thru=store.thru||'pt'; $('line').value=store.line; paintThru(); paintKind(); paintForms();
+  if(!go()){ store.kind='perp'; store.thru='pt'; $('line').value=PRESETS[0].line; store.pt=PRESETS[0].pt; paintThru(); paintKind(); go(); } });
 })();
 </script>
 
