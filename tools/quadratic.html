@@ -134,6 +134,12 @@ kbd{font-family:var(--mono);font-size:.78rem;border:1px solid var(--line);border
 .rs-ring{position:absolute;border-radius:12px;background:var(--hl);pointer-events:none}
 .rs-slash{stroke:var(--ink);stroke-linecap:round;stroke-dasharray:1;stroke-dashoffset:1;opacity:0}
 .rs-idx{position:absolute;left:0;top:0;font-family:var(--serif);line-height:1;color:var(--muted);pointer-events:none}
+.rs-idx3{position:absolute;left:0;top:0;font-family:var(--serif);line-height:1;color:var(--ink);pointer-events:none}
+.rs-tok.bad{color:var(--no)}
+.rs-ghost{fill:none;stroke:var(--ink);stroke-linecap:round;stroke-linejoin:round}
+.rs-trail{fill:none;stroke:var(--ink);stroke-linecap:round;stroke-linejoin:round;opacity:0}
+.rs-trail.wide{stroke:var(--accent)}
+.rs-tip{opacity:0} .rs-tip .core{fill:var(--panel);stroke:var(--ink);stroke-width:3} .rs-tip .glow{fill:var(--accent);opacity:.25}
 </style>
 <style>
 /* The Quadratic Formula: the equation and its a, b, c labels, the formula card, the work rows, the root panel */
@@ -163,6 +169,13 @@ kbd{font-family:var(--mono);font-size:.78rem;border:1px solid var(--line);border
 .rootpick>span{font-size:.78rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-weight:600;margin-right:2px}
 .rootpick button{font-size:.85rem;padding:4px 12px}
 .rootpick button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--panel)}
+/* the split (James, 2026-10-22): a label over each side, and the screen that covers the side we aren't working on */
+.solab{transform:translate(-50%,-50%);font:700 19px var(--display);letter-spacing:.08em;text-transform:uppercase;white-space:nowrap;
+  color:var(--ink);line-height:1;padding:5px 14px 5px 10px;border:2px solid var(--line);border-radius:999px;background:var(--bg);opacity:0}
+.solab .sg{font:700 26px var(--serif);margin-right:8px;vertical-align:-2px}
+.qscreen{z-index:8;border-radius:14px;border:2px dashed var(--line);pointer-events:none;opacity:0;
+  background:repeating-linear-gradient(135deg,var(--panel) 0 14px,var(--bg) 14px 28px);display:grid;place-items:center;
+  font:700 18px var(--display);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);box-shadow:0 8px 24px rgba(15,20,45,.12)}
 </style>
 
 <div class="wrap">
@@ -198,8 +211,8 @@ kbd{font-family:var(--mono);font-size:.78rem;border:1px solid var(--line);border
     </div>
     <div class="rootpick" id="slicepick" role="group" aria-label="How the square leaves">
       <span>Square leaves</span>
+      <button type="button" data-s="on" aria-pressed="true">Blade slice</button>
       <button type="button" data-s="off" aria-pressed="false">Pops off</button>
-      <button type="button" data-s="on" aria-pressed="true">Ninja slice</button>
     </div>
   </section>
 
@@ -618,7 +631,7 @@ MT.RootSplit=function(TL,layer,o){
   function layout(st){
     const run=list=>{ let w=0; const xs=[]; list.forEach((e,j)=>{ const t=toks[e.id]; if(j) w+=gap(toks[list[j-1].id],t); xs.push(w+t.w/2); w+=t.w; }); return {w,xs}; };
     const out=st.filter(e=>e.side==='o'), ins=st.filter(e=>e.side==='i'), Ol=run(out), Il=run(ins);
-    const RW=.66*F, PR=.14*F, on=ins.length>0, sp=Ol.w&&on?.05*F:0, total=Ol.w+(on?sp+RW+Il.w+PR:0);
+    const RW=.66*F, PR=.14*F, on=ins.length>0, sp=(Ol.w&&on?.05*F:0)+(K===3&&on?(Ol.w?.34*F:.2*F):0), total=Ol.w+(on?sp+RW+Il.w+PR:0);
     const x0=cx-total/2, r0=x0+Ol.w+sp, pos={};
     out.forEach((e,j)=>pos[e.id]={x:x0+Ol.xs[j],y:cy+yOff(toks[e.id])});
     ins.forEach((e,j)=>pos[e.id]={x:r0+RW+Il.xs[j],y:cy+yOff(toks[e.id])});
@@ -634,7 +647,10 @@ MT.RootSplit=function(TL,layer,o){
   const radD=(x0,x1)=>{ const yt=cy-.8*F, yb=cy+.56*F, ym=cy+.1*F;
     return `M${(x0+.02*F).toFixed(1)} ${ym.toFixed(1)} L${(x0+.13*F).toFixed(1)} ${(ym-.09*F).toFixed(1)} L${(x0+.31*F).toFixed(1)} ${yb.toFixed(1)} L${(x0+.58*F).toFixed(1)} ${yt.toFixed(1)} L${x1.toFixed(1)} ${yt.toFixed(1)}`; };
   const radAt=(a,b,p)=>{ const x0=lerp(a.x0,b.x0,p), x1=lerp(a.x1,b.x1,p); if(path._d!==(path._d=radD(x0,x1))) path.setAttribute('d',path._d);
-    S(svg,'opacity',a.on&&b.on?1:a.on?1-p:b.on?p:0); };
+    const op=a.on&&b.on?1:a.on?1-p:b.on?p:0; S(svg,'opacity',op);
+    if(idxEl){ S(idxEl,'opacity',op); idxPos={x:x0+.1*F,y:cy-.36*F}; idxT(1); } };
+  let idxPos={x:0,y:0};
+  const idxT=k=>S(idxEl,'transform',`translate(${idxPos.x.toFixed(1)}px,${idxPos.y.toFixed(1)}px) translate(-50%,-50%) scale(${k.toFixed(3)})`);
   function hl(b,t,t2,pad=8){ const h=hd('div','hlbox',null); layer.insertBefore(h,layer.firstChild);
     Object.assign(h.style,{left:(b.x-pad)+'px',top:(b.y-pad/2)+'px',width:(b.w+2*pad)+'px',height:(b.h+pad)+'px'});
     TL.add(t,.25,p=>S(h,'opacity',p),E.out); TL.add(t+.25,Math.max(.05,t2-t-.25),p=>S(h,'opacity',.75+.25*Math.cos(p*Math.PI*4)),E.lin); TL.add(t2,.3,p=>S(h,'opacity',1-p)); }
@@ -644,12 +660,19 @@ MT.RootSplit=function(TL,layer,o){
   function trans(ia,ib,op,t){
     const LA=lays[ia], LB=lays[ib], A=new Set(states[ia].map(e=>e.id)), B=new Set(states[ib].map(e=>e.id));
     const pops=op.pop||[], jump=new Set(op.jump||[]), spawn=op.spawn||{};
-    const h=op.hl&&op.hl.length?.6:0, pp=pops.length?(SLICE?.85:.5):Object.keys(spawn).length?.5:0, dm=.8, tm=t+h+pp;
-    if(h) hl(boxOf(ia,op.hl),t,SLICE&&pops.length?t+h+.2:t+h+pp+.25);
+    const bnc=op.bounce||[], cut=pops.length||bnc.length;
+    const h=op.hl&&op.hl.length?.6:0; let pp=pops.length?(SLICE?.85:.5):Object.keys(spawn).length?.5:0, dm=.8;
+    if(bnc.length&&!pops.length) pp=.9;
+    let tr=null;
+    if(STYLE==='trace'&&cut){ tr=trace(LA,pops,bnc,t+h,op.idx); pp=tr.end-(t+h)+.1; }
+    const tm=t+h+pp;
+    if(h) hl(boxOf(ia,op.hl),t,SLICE&&cut?(tr?tr.first:t+h+.2):t+h+pp+.25);
     pops.forEach((id,n)=>{ const a=LA.pos[id];
+      if(tr) return;
       if(SLICE) slice(id,LA,t+h,n===0&&op.idx);
       else TL.add(t+h,.5,p=>set(id,a.x,a.y-.55*F*p,1+.9*Math.sin(p*Math.PI*.6),p<.15?1:1-(p-.15)/.85),E.out); });
-    (op.ringOut||[]).forEach(r=>TL.add(t+h,.3,p=>S(r,'opacity',1-p)));
+    bnc.forEach(id=>clang(id,LA,tr?tr.hit[id]:t+h+.1));
+    (op.ringOut||[]).forEach(r=>TL.add(tr?tr.first:t+h,.3,p=>S(r,'opacity',1-p)));
     for(const id of B){ const b=LB.pos[id];
       if(A.has(id)){ const a=LA.pos[id], c={x:(a.x+b.x)/2,y:Math.min(a.y,b.y)-1.15*F}, j=jump.has(id);
         if(a.x===b.x&&a.y===b.y) continue;
@@ -660,7 +683,7 @@ MT.RootSplit=function(TL,layer,o){
       } else { TL.add(tm+.15,.45,p=>set(id,b.x,b.y+.2*F*(1-p),1,p),E.out); flashNew(id,tm+.15); }
     }
     for(const id of A) if(!B.has(id)&&!pops.includes(id)){ const a=LA.pos[id]; TL.add(spawn&&Object.values(spawn).some(l=>l.includes(id))?t+h:tm,.3,p=>set(id,a.x,a.y,1,1-p)); }
-    TL.add(SLICE&&pops.length&&!LB.rad.on?t+h+.12:tm,dm,p=>radAt(LA.rad,LB.rad,p)); // a slice that leaves nothing inside: the root vanishes as it cuts
+    TL.add(SLICE&&pops.length&&!LB.rad.on?(tr?tr.last:t+h+.12):tm,dm,p=>radAt(LA.rad,LB.rad,p)); // a slice that leaves nothing inside: the root vanishes as it cuts
     return h+pp+dm+.45;
   }
   // Ninja slice (James, 2026-10-21, preview): the root is a blade that only cuts its own level. The invisible 2 flashes in the
@@ -668,7 +691,8 @@ MT.RootSplit=function(TL,layer,o){
   // (two clipped copies of the same symbol, like X-Puzzles' rip); the base is then free to jump outside.
   function slice(id,LA,t0,idx){
     const tk=toks[id], a=LA.pos[id], w=tk.w, hh=tk.h, sz=tk.kind==='sup'?.62*F:F, base=.06*F;
-    if(idx){ const r=LA.rad, ie=hd('div','rs-idx',layer,'2'); ie.style.fontSize=(.44*F).toFixed(1)+'px';
+    if(idx&&K===3) TL.add(t0-.55,.5,p=>idxT(1+.5*Math.sin(p*Math.PI)),E.lin);
+    else if(idx){ const r=LA.rad, ie=hd('div','rs-idx',layer,'2'); ie.style.fontSize=(.44*F).toFixed(1)+'px';
       const x=r.x0+.16*F, y=cy-.3*F; S(ie,'opacity',0); S(ie,'transform',`translate(${x.toFixed(1)}px,${y.toFixed(1)}px) translate(-50%,-50%)`);
       TL.add(t0-.55,.6,p=>S(ie,'opacity',p<.25?p/.25:p<.7?1:1-(p-.7)/.3),E.lin); }
     TL.add(t0-.25,.3,p=>S(path,'strokeWidth',(base*(1+.7*Math.sin(p*Math.PI))).toFixed(2)),E.lin);
@@ -682,13 +706,118 @@ MT.RootSplit=function(TL,layer,o){
       TL.add(t0+.2,.85,p=>{ const dx=dir*.4*F*p, dy=dir*.2*F*p+1.1*F*p*p; S(e,'opacity',p<=0?0:1-p*p);
         S(e,'transform',`translate(${(a.x+dx).toFixed(1)}px,${(a.y+dy).toFixed(1)}px) translate(-50%,-50%) rotate(${(dir*28*p).toFixed(1)}deg)`); },E.lin); });
   }
+  // A cube root can't cut a square: the target shakes and flashes red (--no), and stays
+  function clang(id,LA,t0){ const a=LA.pos[id];
+    TL.add(t0,.5,p=>set(id,a.x+.07*F*Math.sin(p*Math.PI*6)*(1-p),a.y,1,1),E.lin);
+    TL.add(t0,1,p=>toks[id].el.classList.toggle('bad',p>0&&p<.999),E.lin); }
+
+  // Blade trace (James, 2026-10-22, preview): the radical is the path of a blade's tip. The old radical goes faint, a bright tip
+  // draws it again (the line appears behind the tip), and at the end of the bar the stroke carries on, hooking back down through
+  // the square (or through every lit partner in one sweep). Each symbol is cut along the stroke's own direction and its halves
+  // fall away; a cube root's stroke glances off a square it can't cut.
+  function bz(a,c1,c2,b,n){ const o=[]; for(let i=1;i<=n;i++){ const u=i/n, v=1-u;
+    o.push({x:v*v*v*a.x+3*v*v*u*c1.x+3*v*u*u*c2.x+u*u*u*b.x,y:v*v*v*a.y+3*v*v*u*c1.y+3*v*u*u*c2.y+u*u*u*b.y}); } return o; }
+  function trace(LA,cuts,bnc,t0,idx){
+    const r=LA.rad, yt=cy-.8*F, yb=cy+.56*F, ym=cy+.1*F, x0=r.x0;
+    const pts=[{x:x0+.02*F,y:ym},{x:x0+.13*F,y:ym-.09*F},{x:x0+.31*F,y:yb},{x:x0+.58*F,y:yt},{x:r.x1,y:yt}];
+    const nRad=pts.length;
+    const T=[...cuts.map(id=>({id,bounce:false})),...bnc.map(id=>({id,bounce:true}))].map(o=>({...o,p:LA.pos[o.id],tk:toks[o.id]})).sort((a,b)=>b.p.x-a.p.x);
+    const marks=[]; // index in pts where each target is reached
+    let len, Lt, sAt, tAt, revealAt, LrR, tEnd, ghostOut;
+    const lengths=()=>{ len=[0]; for(let i=1;i<pts.length;i++) len.push(len[i-1]+Math.hypot(pts[i].x-pts[i-1].x,pts[i].y-pts[i-1].y)); Lt=len[len.length-1]; };
+    if(PASS==='first'){
+      // First pass (James, 2026-10-22): the tip runs the radical once; as it passes over each target along the bar it scoops
+      // down through it and back up to the bar, then finishes the bar. No coming back.
+      pts.length=4; const D0=pts[3];
+      [...T].sort((p,q)=>p.p.x-q.p.x).forEach(o=>{ const c={x:o.p.x,y:o.p.y}, rr=.42*F, cur=pts[pts.length-1];
+        const a0={x:c.x-rr,y:yt}; if(a0.x>cur.x+1) pts.push(a0);
+        const s0=pts[pts.length-1];
+        if(o.bounce){ const hit={x:c.x,y:c.y-o.tk.h*.45};
+          pts.push(...bz(s0,{x:s0.x+.18*F,y:yt},{x:hit.x-.2*F,y:hit.y-.2*F},hit,10)); marks.push({o,i:pts.length-1});
+          pts.push(...bz(hit,{x:hit.x+.12*F,y:hit.y-.35*F},{x:c.x+rr-.1*F,y:yt},{x:c.x+rr,y:yt},8));
+        } else { const bot={x:c.x+.16*F,y:c.y+o.tk.h*.55+.08*F};
+          pts.push(...bz(s0,{x:s0.x+.2*F,y:yt},{x:c.x-.18*F,y:c.y-.28*F},c,10)); marks.push({o,i:pts.length-1});
+          pts.push(...bz(c,{x:c.x+.08*F,y:c.y+.25*F},{x:bot.x-.08*F,y:bot.y},bot,6));
+          pts.push(...bz(bot,{x:bot.x+.22*F,y:bot.y},{x:c.x+rr,y:yt+.3*F},{x:c.x+rr+.06*F,y:yt},8)); }
+      });
+      if(pts[pts.length-1].x<r.x1-1) pts.push({x:r.x1,y:yt});
+      lengths();
+      marks.forEach(m=>{ const q0=pts[m.i-1], q1=pts[Math.min(pts.length-1,m.i+1)], dx=q1.x-q0.x, dy=q1.y-q0.y, h=Math.hypot(dx,dy)||1; m.dir={x:dx/h,y:dy/h}; });
+      const D=(.75+.22*T.length)*SLOW; tEnd=t0+D;
+      sAt=t=>t<=t0?0:t<tEnd?Lt*(t-t0)/D:Lt; tAt=L=>t0+D*L/Lt;
+      // the solid radical fills in under the tip: up the tick and long stroke, then along the bar as far as the tip has gone
+      const L3=len[3]; LrR=L3+(r.x1-D0.x);
+      revealAt=(sL,q)=>sL<=L3?sL:L3+Math.max(0,Math.min(r.x1-D0.x,q.x-D0.x));
+      ghostOut=tEnd-.1;
+    } else {
+    const E0=pts[pts.length-1], first=T[0];
+    if(first.bounce){ // swing down at it and glance off
+      const hit={x:first.p.x+.05*F,y:first.p.y-first.tk.h*.45};
+      pts.push(...bz(E0,{x:E0.x+.55*F,y:E0.y},{x:hit.x+.45*F,y:hit.y-.6*F},hit,14)); marks.push({o:first,i:pts.length-1,dir:{x:-.6,y:.8}});
+      pts.push(...bz(hit,{x:hit.x+.15*F,y:hit.y-.35*F},{x:hit.x+.5*F,y:hit.y-.9*F},{x:hit.x+.95*F,y:hit.y-1.15*F},10));
+    } else {
+      const one=T.length===1, dv=one?{x:-.7,y:.71}:{x:-.97,y:.24}; // one target: a steep diagonal; several: one low sweep
+      const pin={x:first.p.x-dv.x*.65*F,y:first.p.y-dv.y*.65*F};
+      pts.push(...bz(E0,{x:E0.x+.6*F,y:E0.y-.05*F},{x:pin.x-dv.x*.45*F,y:pin.y-dv.y*.45*F},pin,16));
+      T.forEach((o,n)=>{ const c={x:o.p.x,y:o.p.y}; if(n===0) pts.push(c); else pts.push(...bz(pts[pts.length-1],{x:lerp(pts[pts.length-1].x,c.x,.33),y:pts[pts.length-1].y},{x:lerp(pts[pts.length-1].x,c.x,.66),y:c.y},c,6));
+        marks.push({o,i:pts.length-1,dir:n===0?dv:{x:-1,y:0}}); });
+      const last=T[T.length-1].p; pts.push(...bz(pts[pts.length-1],{x:last.x-.3*F,y:last.y+.1*F},{x:last.x-.55*F,y:last.y+.3*F},{x:last.x-.8*F,y:last.y+.55*F},8));
+    }
+    lengths();
+    const Lr=len[nRad-1], Dr=.7*SLOW, Df=(.45+.12*Math.max(0,T.length-1))*SLOW, t1=t0+Dr; tEnd=t1+Df;
+    sAt=t=>t<=t0?0:t<t1?Lr*(t-t0)/Dr:t<tEnd?Lr+(Lt-Lr)*Math.pow((t-t1)/Df,1.6):Lt;
+    tAt=L=>L<=Lr?t0+Dr*L/Lr:t1+Df*Math.pow((L-Lr)/(Lt-Lr),1/1.6);
+    LrR=Lr; revealAt=sL=>Math.min(sL,Lr); ghostOut=t1;
+    }
+    const at=L=>{ let i=1; while(i<len.length-1&&len[i]<L) i++; const u=(L-len[i-1])/Math.max(1e-6,len[i]-len[i-1]); return {x:lerp(pts[i-1].x,pts[i].x,Math.min(1,u)),y:lerp(pts[i-1].y,pts[i].y,Math.min(1,u))}; };
+    const d='M'+pts.map(q=>q.x.toFixed(1)+' '+q.y.toFixed(1)).join(' L');
+    // the faint old radical, the redrawn one, the trail and the tip
+    const ghost=sv('path',{class:'rs-ghost',d:radD(r.x0,r.x1)},svg); S(ghost,'strokeWidth',(.06*F).toFixed(2)); S(ghost,'opacity',0);
+    const trailW=sv('path',{class:'rs-trail wide',d},svg), trail=sv('path',{class:'rs-trail',d},svg);
+    S(trailW,'strokeWidth',(.2*F).toFixed(1)); S(trail,'strokeWidth',(.055*F).toFixed(2));
+    const tipG=sv('g',{class:'rs-tip'},svg), tipR=Math.max(4,.075*F);
+    sv('circle',{r:(tipR*2.2).toFixed(1),class:'glow'},tipG); sv('circle',{r:tipR.toFixed(1),class:'core'},tipG);
+    const TL0=t0-.15, TR=.55*F;
+    TL.add(TL0,.15,p=>S(ghost,'opacity',.28*p)); TL.add(ghostOut,.3,p=>S(ghost,'opacity',.28*(1-p)));
+    TL.add(t0,tEnd-t0,p=>{ const t=t0+p*(tEnd-t0), sL=sAt(t);
+      // the radical draws itself behind the tip; the solid line is whole again once the tip leaves the bar
+      if(p<=0||p>=1){ S(path,'strokeDasharray','none'); S(path,'strokeDashoffset','0'); }
+      const q=at(sL);
+      if(p>0&&p<1){ S(path,'strokeDasharray',`${LrR.toFixed(1)} ${(LrR+10).toFixed(1)}`); S(path,'strokeDashoffset',(LrR-revealAt(sL,q)).toFixed(1)); } A_(tipG,'transform',`translate(${q.x.toFixed(1)},${q.y.toFixed(1)})`); S(tipG,'opacity',p>0&&p<1?1:0);
+      for(const [el,k] of [[trailW,.25],[trail,.9]]){ S(el,'strokeDasharray',`${TR.toFixed(1)} ${(Lt+TR).toFixed(1)}`); S(el,'strokeDashoffset',(TR-sL).toFixed(1)); S(el,'opacity',p>0&&p<1?k:0); } },E.lin);
+    // the trail fades out behind the finished stroke
+    TL.add(tEnd,.4,p=>{ for(const [el,k] of [[trailW,.25],[trail,.9]]){ S(el,'strokeDasharray',`${TR.toFixed(1)} ${(Lt+TR).toFixed(1)}`); S(el,'strokeDashoffset',(TR-Lt).toFixed(1)); S(el,'opacity',k*(1-p)); } },E.lin);
+    if(idx&&K===3) TL.add(t0,.45,p=>idxT(1+.5*Math.sin(p*Math.PI)),E.lin);
+    else if(idx){ const ie=hd('div','rs-idx',layer,'2'); ie.style.fontSize=(.44*F).toFixed(1)+'px'; S(ie,'opacity',0);
+      S(ie,'transform',`translate(${(r.x0+.16*F).toFixed(1)}px,${(cy-.3*F).toFixed(1)}px) translate(-50%,-50%)`);
+      TL.add(t0-.1,.7,p=>S(ie,'opacity',p<.2?p/.2:p<.6?1:1-(p-.6)/.4),E.lin); }
+    const hit={}; let firstT=Infinity, lastT=t0;
+    marks.forEach(m=>{ const tc=tAt(len[m.i]); hit[m.o.id]=tc; firstT=Math.min(firstT,tc); lastT=Math.max(lastT,tc); if(!m.o.bounce) cutAlong(m.o.id,LA,tc,m.dir); });
+    return {end:tEnd,first:firstT,last:lastT,hit};
+  }
+  const A_=(el,k,v)=>{ if(el._a!==v){ el._a=v; el.setAttribute(k,v); } };
+  // cut a symbol along the stroke's direction (dir = unit vector); the halves part along the normal and fall
+  function cutAlong(id,LA,tc,dir){
+    const tk=toks[id], a=LA.pos[id], w=tk.w, h=tk.h, sz=tk.kind==='sup'?.62*F:F, L=Math.max(w,h)*2;
+    const c={x:w/2,y:h/2}, n={x:-dir.y,y:dir.x};
+    TL.add(tc,.02,p=>set(id,a.x,a.y,1,p>0?0:1));
+    [1,-1].forEach(sg=>{
+      const P=[[c.x-dir.x*L,c.y-dir.y*L],[c.x+dir.x*L,c.y+dir.y*L],[c.x+dir.x*L+sg*n.x*L,c.y+dir.y*L+sg*n.y*L],[c.x-dir.x*L+sg*n.x*L,c.y-dir.y*L+sg*n.y*L]];
+      const e=hd('div','rs-tok'+(tk.kind==='sup'?' sup':''),layer,tk.txt); e.style.fontSize=sz.toFixed(1)+'px';
+      e.style.clipPath='polygon('+P.map(q=>q[0].toFixed(1)+'px '+q[1].toFixed(1)+'px').join(',')+')'; S(e,'opacity',0);
+      const along=sg>0?.15:-.1;
+      TL.add(tc,.9*SLOW,p=>{ const dx=(sg*n.x*.32+dir.x*along)*F*p, dy=(sg*n.y*.32+dir.y*along)*F*p+1.2*F*p*p;
+        S(e,'opacity',p<=0?0:1-p*p); S(e,'transform',`translate(${(a.x+dx).toFixed(1)}px,${(a.y+dy).toFixed(1)}px) translate(-50%,-50%) rotate(${(sg*30*p).toFixed(1)}deg)`); },E.lin); });
+  }
   function ringsIn(si,pairs,t){ return pairs.map(pr=>{ const b=boxOf(si,pr), r=hd('div','rs-ring',null); layer.insertBefore(r,layer.firstChild);
     Object.assign(r.style,{left:(b.x-8)+'px',top:(b.y-4)+'px',width:(b.w+16)+'px',height:(b.h+8)+'px'}); S(r,'opacity',0);
     TL.add(t,.25,p=>S(r,'opacity',p),E.out); rings.push(r); return r; }); }
 
-  let SLICE=false;
+  let SLICE=false, STYLE='pop', K=2, SLOW=1, idxEl=null, PASS='hook';
   function setup(D,method,opt){
-    SLICE=!!(opt&&opt.slice);
+    opt=opt||{};
+    STYLE=opt.style||(opt.slice?'slice':'pop'); SLICE=STYLE!=='pop'; K=opt.index===3?3:2; SLOW=opt.slow?1.8:1; PASS=opt.pass==='first'?'first':'hook';
+    if(K===3){ idxEl=hd('div','rs-idx3',layer,'3'); S(idxEl,'opacity',0); }
     const N=Math.abs(D), neg=D<0, Q=MT.quad;
     toks={}; states=[]; steps=[]; all=[]; F=F0;
     const push=st=>{ states.push(st); return states.length-1; };
@@ -709,75 +838,97 @@ MT.RootSplit=function(TL,layer,o){
       out=[O('i')]; negStep=steps.length-1;
     } else { tok('N',nT(N),'num'); push([I('N')]); }
     const base=states.length-1;
-    const name=`√${N}`;
+    const RT=K===3?'∛':'√', name=`${RT}${N}`, SUP=K===3?'³':'²';
+    const W=K===3?{sq:'cube',grp:'group of three',grps:'groups of three',same:'three times'}:{sq:'square',grp:'pair',grps:'pairs',same:'twice'};
     if(N===1){ const s1=push([O('N'),...out]);
-      step('√1 = 1','1 = 1², so the 1 comes out and the root is gone.','',t=>trans(base,s1,{hl:['N'],jump:['N']},t),{si:s1});
-      steps[steps.length-1].lead='Is 1 a perfect square?';
-      return finish({k:1,m:1,i:neg},firstQ||'Is 1 a perfect square?'); }
+      step(`${RT}1 = 1`,`1 = 1${SUP}, so the 1 comes out and the root is gone.`,'',t=>trans(base,s1,{hl:['N'],jump:['N']},t),{si:s1});
+      steps[steps.length-1].lead=`Is 1 a perfect ${W.sq}?`;
+      return finish({k:1,m:1,i:neg},firstQ||`Is 1 a perfect ${W.sq}?`); }
+    const cutName=SLICE?`Slice off the ${W.sq}`:`The ${W.sq} pops off`;
 
     if(method==='primes'){
       const P=Q.primes(N);
       const lead=`What are the prime factors of ${N}?`; firstQ=firstQ||lead;
-      if(P.length===1){ step('No pairs',`${N} is prime, so there are no pairs and ${name} stays.`,'',t=>{ hl(boxOf(base,['N']),t,t+1); return 1.2; },null);
+      if(P.length===1){ step(`No ${W.grps}`,`${N} is prime, so there are no ${W.grps} and ${name} stays.`,'',t=>{ hl(boxOf(base,['N']),t,t+1); return 1.2; },null);
         steps[steps.length-1].lead=lead;
         return finish({k:1,m:N,i:neg},firstQ); }
       P.forEach((p,j)=>{ tok('p'+j,nT(p),'num'); if(j) tok('e'+j,DOT,'dot'); });
       const ids=P.map((p,j)=>j?['e'+j,'p'+j]:['p0']).flat();
       const s1=push([...out,...ids.map(I)]);
-      const pairs=[], left=[]; for(let j=0;j<P.length;){ if(P[j]===P[j+1]){ pairs.push([j,j+1]); j+=2; } else { left.push(j); j++; } }
-      step('Break it into primes',`${N} = ${P.join(' · ')}`,pairs.length?'Which primes come in pairs?':'Do any primes come in pairs?',t=>trans(base,s1,{hl:['N']},t),{si:s1,ids:ids});
+      const groups=[], left=[]; for(let j=0;j<P.length;){ if(P.slice(j,j+K).length===K&&P.slice(j,j+K).every(v=>v===P[j])){ groups.push([...Array(K)].map((_,q)=>j+q)); j+=K; } else { left.push(j); j++; } }
+      step('Break it into primes',`${N} = ${P.join(' · ')}`,groups.length?`Which primes come in ${W.grps}?`:`Do any primes come in ${W.grps}?`,t=>trans(base,s1,{hl:['N']},t),{si:s1,ids:ids});
       steps[steps.length-1].lead=lead;
-      if(!pairs.length){
-        step('No pairs','No prime shows up twice, so nothing comes out.',left.length>1?'What do they multiply back to?':'',t=>{ hl(boxOf(s1,ids),t,t+1); return 1.2; },null);
+      // under a cube root, a prime that shows up only twice is a pair: a square, which this root can't cut
+      const pairsLeft=[]; if(K===3){ for(let q=0;q<left.length-1;q++) if(P[left[q]]===P[left[q+1]]){ pairsLeft.push([left[q],left[q+1]]); q++; } }
+      const bounceStep=(si)=>{ if(!pairsLeft.length) return;
+        const ids2=pairsLeft.flat().map(j=>'p'+j), pr=pairsLeft.map(pp=>`${P[pp[0]]} · ${P[pp[1]]}`).join(' and ');
+        step(`Can it cut ${pr}?`,`${pr} is only a pair: a square, not a cube. A cube root only cuts cubes, so ${pairsLeft.length>1?'they stay':'it stays'} inside.`,'',
+          t=>trans(si,si,{hl:ids2,bounce:[ids2[ids2.length-1]]},t),null); };
+      if(!groups.length){
+        step(`No ${W.grps}`,`No prime shows up ${W.same}, so nothing comes out.`,left.length>1&&!pairsLeft.length?'What do they multiply back to?':'',t=>{ hl(boxOf(s1,ids),t,t+1); return 1.2; },null);
+        bounceStep(s1);
         if(left.length>1){ tok('M',nT(N),'num'); const s2=push([...out,I('M')]);
           step('Multiply what’s left',`${P.join(' · ')} = ${N}, so ${name} stays.`,'',t=>trans(s1,s2,{hl:ids},t),null); }
         return finish({k:1,m:N,i:neg},firstQ);
       }
-      // the pairs light up, then one at a time the partner pops and the other jumps outside
       let rs=null;
-      step('Find the pairs',pairs.map(pr=>`${P[pr[0]]} · ${P[pr[1]]}`).join(' and ')+(pairs.length>1?' are pairs.':' is a pair.'),'What comes out of the root for each pair?',
-        t=>{ rs=ringsIn(s1,pairs.map(pr=>['p'+pr[0],'p'+pr[1]]),t); return .6; },null);
-      const seq=[]; let outN=[], inN=P.map((p,j)=>j), prev=s1, oc=0;
+      step(`Find the ${W.grps}`,groups.map(g=>g.map(j=>P[j]).join(' · ')).join(' and ')+(groups.length>1?` are ${W.grps}.`:` is a ${W.grp}.`),`What comes out of the root for each ${W.grp}?`,
+        t=>{ rs=ringsIn(s1,groups.map(g=>g.map(j=>'p'+j)),t); return .6; },null);
+      const seq=[]; let outN=[], inN=P.map((p,j)=>j), prev=s1;
       const build=()=>{ const o=[], ins=[]; outN.forEach((j,n)=>{ if(n){ const id='o'+n; if(!toks[id]) tok(id,DOT,'dot'); o.push(O(id)); } o.push(O('p'+j)); });
         inN.forEach((j,n)=>{ if(n) ins.push(I('e'+n)); ins.push(I('p'+j)); }); return [...o,...out,...ins]; };
-      pairs.forEach((pr,n)=>{ outN.push(pr[0]); inN=inN.filter(j=>j!==pr[0]&&j!==pr[1]); const si=push(build()); seq.push({from:prev,to:si,pr,n}); prev=si; });
-      const kOut=pairs.reduce((v,pr)=>v*P[pr[0]],1), mIn=left.reduce((v,j)=>v*P[j],1);
-      const needMul=pairs.length>1||left.length>1;
-      step(SLICE?'Slice off each pair':'Each pair pops out',(SLICE?'Each pair is a square, so the root slices it: one number comes out. ':'')+`Each pair comes out as one number: ${pairs.map(pr=>P[pr[0]]).join(' · ')} outside`+(left.length?`, ${left.map(j=>P[j]).join(' · ')} still inside.`:', nothing left inside.'),
-        needMul?'What do they multiply to?':'',
-        t=>{ let d=0; seq.forEach(s=>{ d+=trans(s.from,s.to,{pop:['p'+s.pr[1]],jump:['p'+s.pr[0]],ringOut:[rs[s.n]],idx:s.n===0},t+d)-.1; }); return d+.1; },needMul?null:{si:prev});
+      groups.forEach((g,n)=>{ outN.push(g[0]); inN=inN.filter(j=>!g.includes(j)); const si=push(build()); seq.push({from:prev,to:si,g,n}); prev=si; });
+      const kOut=groups.reduce((v,g)=>v*P[g[0]],1), mIn=left.reduce((v,j)=>v*P[j],1);
+      const needMul=groups.length>1||left.length>1;
+      step(SLICE?`Slice off each ${W.grp}`:`Each ${W.grp} pops out`,(SLICE?`Each ${W.grp} is a ${W.sq}, so the root slices it: one number comes out. `:'')+`Each ${W.grp} comes out as one number: ${groups.map(g=>P[g[0]]).join(' · ')} outside`+(left.length?`, ${left.map(j=>P[j]).join(' · ')} still inside.`:', nothing left inside.'),
+        pairsLeft.length?`Can a cube root cut ${pairsLeft.map(pp=>`${P[pp[0]]} · ${P[pp[1]]}`).join(' and ')}?`:needMul?'What do they multiply to?':'',
+        STYLE==='trace'
+          ? t=>trans(s1,prev,{pop:groups.flatMap(g=>g.slice(1).map(j=>'p'+j)),jump:groups.map(g=>'p'+g[0]),ringOut:rs,idx:true},t) // one stroke cuts every group
+          : t=>{ let d=0; seq.forEach(sq=>{ d+=trans(sq.from,sq.to,{pop:sq.g.slice(1).map(j=>'p'+j),jump:['p'+sq.g[0]],ringOut:[rs[sq.n]],idx:sq.n===0},t+d)-.1; }); return d+.1; },
+        needMul||pairsLeft.length?null:{si:prev});
+      bounceStep(prev);
       if(needMul){
         const ms=[], mo=states[prev].filter(e=>e.side==='o'&&e.id!=='i').map(e=>e.id), mi=states[prev].filter(e=>e.side==='i').map(e=>e.id);
-        const fin=[]; if(pairs.length>1){ tok('K',nT(kOut),'num'); fin.push(O('K')); ms.push(...mo); } else fin.push(...mo.map(O));
+        const fin=[]; if(groups.length>1){ tok('K',nT(kOut),'num'); fin.push(O('K')); ms.push(...mo); } else fin.push(...mo.map(O));
         fin.push(...out);
         if(left.length>1){ tok('M',nT(mIn),'num'); fin.push(I('M')); ms.push(...mi); } else fin.push(...mi.map(I));
         const sf=push(fin);
-        step('Multiply',(pairs.length>1?`${pairs.map(pr=>P[pr[0]]).join(' · ')} = ${kOut} outside`:'')+(pairs.length>1&&left.length>1?' and ':'')+(left.length>1?`${left.map(j=>P[j]).join(' · ')} = ${mIn} inside`:'')+'.','',
+        step('Multiply',(groups.length>1?`${groups.map(g=>P[g[0]]).join(' · ')} = ${kOut} outside`:'')+(groups.length>1&&left.length>1?' and ':'')+(left.length>1?`${left.map(j=>P[j]).join(' · ')} = ${mIn} inside`:'')+'.','',
           t=>trans(prev,sf,{hl:ms},t),{si:sf});
       }
       return finish({k:kOut,m:mIn,i:neg},firstQ);
     }
 
-    // the largest perfect square
-    const {s,m}=Q.sqroot(N);
-    const lead=m===1?`Is ${N} a perfect square?`:`What is the largest perfect square that goes into ${N}?`; firstQ=firstQ||lead;
+    // the largest perfect square (or cube)
+    const kr=n=>{ for(let q=Math.floor(Math.pow(n,1/K)+1e-9);q>1;q--) if(n%Math.pow(q,K)===0) return {s:q,m:n/Math.pow(q,K)}; return {s:1,m:n}; };
+    const {s,m}=kr(N), sk=Math.pow(s,K);
+    const lead=m===1?`Is ${N} a perfect ${W.sq}?`:`What is the largest perfect ${W.sq} that goes into ${N}?`; firstQ=firstQ||lead;
     const s0n=steps.length;
-    if(s===1){ step('No perfect square',`No perfect square (other than 1) goes into ${N}, so ${name} stays.`,'',t=>{ hl(boxOf(base,['N']),t,t+1); return 1.2; },null);
-      steps[s0n].lead=lead;
+    const sqm=K===3?Q.sqroot(m):{s:1,m};
+    const bounceTail=(si,mid)=>{ // a cube root meets a square: write it as one, the stroke glances off, and it goes back to a number
+      if(!(K===3&&sqm.s>1)) return;
+      tok('B',nT(sqm.s),'num'); tok('b2','2','sup'); if(sqm.m>1){ tok('d3',DOT,'dot'); tok('R',nT(sqm.m),'num'); }
+      const keep=states[si].filter(e=>e.id!==mid), sb=push([...keep,I('B'),I('b2'),...(sqm.m>1?[I('d3'),I('R')]:[])]);
+      const tail=sqm.m>1?` · ${sqm.m}`:'';
+      step('Can it cut a square?',`${m} = ${sqm.s}²${tail}. That ² is a square, and a cube root only cuts cubes, so ${m} stays inside.`,'',
+        t=>{ const d1=trans(si,sb,{hl:[mid]},t), d2=trans(sb,sb,{hl:['b2'],bounce:['b2']},t+d1); return d1+d2+trans(sb,si,{hl:['B','b2',...(sqm.m>1?['d3','R']:[])]},t+d1+d2); },null); };
+    if(s===1){ step(`No perfect ${W.sq}`,`No perfect ${W.sq} (other than 1) goes into ${N}, so ${name} stays.`,K===3&&sqm.s>1?`Is there a square in ${N}? Can a cube root cut it?`:'',t=>{ hl(boxOf(base,['N']),t,t+1); return 1.2; },null);
+      steps[s0n].lead=lead; bounceTail(base,'N');
       return finish({k:1,m:N,i:neg},firstQ); }
     let cur=base;
-    if(m>1){ tok('A',nT(s*s),'num'); tok('d1',DOT,'dot'); tok('M',nT(m),'num');
+    if(m>1){ tok('A',nT(sk),'num'); tok('d1',DOT,'dot'); tok('M',nT(m),'num');
       const s1=push([...out,I('A'),I('d1'),I('M')]);
-      step('Find the largest perfect square',`${N} = ${s*s} · ${m}, and ${s*s} is a perfect square.`,`${s*s} is what number squared?`,t=>trans(base,s1,{hl:['N']},t),{si:s1,ids:['A','d1','M']});
+      step(`Find the largest perfect ${W.sq}`,`${N} = ${sk} · ${m}, and ${sk} is a perfect ${W.sq}.`,`${sk} is what number ${K===3?'cubed':'squared'}?`,t=>trans(base,s1,{hl:['N']},t),{si:s1,ids:['A','d1','M']});
       cur=s1; }
-    tok('S',nT(s),'num'); tok('sq','2','sup');
+    tok('S',nT(s),'num'); tok('sq',String(K),'sup');
     const s2=push([...out,I('S'),I('sq'),...(m>1?[I('d1'),I('M')]:[])]);
     const big=m>1?'A':'N';
-    step('Write it as a square',`${s*s} = ${s}²`,'What happens to a square under a square root?',t=>trans(cur,s2,{hl:[big]},t),null);
+    step(`Write it as a ${W.sq}`,`${sk} = ${s}${SUP}`,`What happens to a ${W.sq} under a ${K===3?'cube':'square'} root?`,t=>trans(cur,s2,{hl:[big]},t),null);
     steps[s0n].lead=lead;
     const s3=push([O('S'),...out,...(m>1?[I('M')]:[])]);
-    step(SLICE?'Slice off the square':'The square pops off',(SLICE?`The root slices off the ²; the ${s} jumps outside`:`The ² pops off and the ${s} jumps outside`)+(m>1?`: only ${m} is left inside.`:': nothing is left inside.'),'',
-      t=>trans(s2,s3,{hl:['sq'],pop:['sq'],jump:['S'],idx:true},t),{si:s3});
+    step(cutName,(SLICE?`The root slices off the ${SUP}; the ${s} jumps outside`:`The ${SUP} pops off and the ${s} jumps outside`)+(m>1?`: only ${m} is left inside.`:': nothing is left inside.'),K===3&&sqm.s>1?`Can a cube root cut ${m}?`:'',
+      t=>trans(s2,s3,{hl:['sq'],pop:['sq'],jump:['S'],idx:true},t),K===3&&sqm.s>1?null:{si:s3});
+    bounceTail(s3,'M');
     return finish({k:s,m,i:neg},firstQ);
   }
   function finish(result,firstQ){
@@ -786,6 +937,7 @@ MT.RootSplit=function(TL,layer,o){
     lays=states.map(layout); const wmax=Math.max(...lays.map(L=>L.w)); F=F0*Math.min(1,maxW/wmax);
     for(const id in toks){ const t=toks[id]; t.w=t.w0*F/F0; t.h=t.h0*F/F0; t.el.style.fontSize=(t.kind==='sup'?.62*F:F)+'px'; }
     S(path,'strokeWidth',(.06*F).toFixed(2));
+    if(idxEl) idxEl.style.fontSize=(.42*F).toFixed(1)+'px';
     lays=states.map(layout);
     steps.forEach(st=>{ if(st.quiz) st.quiz=st.quiz.ids?boxOf(st.quiz.si,st.quiz.ids):wholeBox(st.quiz.si); });
     return {steps,result,firstQ};
@@ -830,7 +982,8 @@ const PRESETS={whole:['x² + 2x − 8 = 0','x² + 3x = 10','2x² + 4x − 6 = 0'
   cx:['x² + 2x + 5 = 0','x² − 4x + 13 = 0','x² + 4x + 7 = 0','2x² − 2x + 5 = 0','x² + 9 = 0']};
 const METHODS={square:'Largest perfect square',primes:'Prime pairs'};
 let METHOD='square'; try{ if(localStorage.getItem('mt-quad-root')==='primes') METHOD='primes'; }catch(e){}
-let SLICE=true; try{ if(localStorage.getItem('mt-quad-slice')==='off') SLICE=false; }catch(e){}
+// the root's square leaves by the blade trace (James, 2026-10-22: the standard for simplifying radicals) or by the old pop
+let SLICE=true; try{ if(localStorage.getItem('mt-quad-blade')==='off') SLICE=false; }catch(e){}
 
 const tg=id=>(k,tex,cls)=>`\\htmlClass{${id}${k}${cls?' '+cls:''}}{${tex}}`;
 function termTeX(T,k,t,first){ const a=Math.abs(t.c), neg=t.c<0, coef=t.p>0&&a===1?'':String(a), v=t.p===2?'x^2':t.p===1?'x':'';
@@ -869,11 +1022,13 @@ function build(prob){
   // ---- the work: one row per line, a side panel for the root; at the split the rows slide up and to the middle
   const wz=hd('div','wz',stage), col=hd('div','col',wz);
   const panel=hd('div','rpanel',stage,`<div class="rptitle">Simplify the root</div><div class="rpmeth">${METHODS[METHOD]}</div>`);
+  if(D===0) panel.style.display='none'; // √0 needs no side panel
   const layer=hd('div','rslayer',stage);
   const ask=hd('div','ask',stage), sayEl=hd('div','say',ask), qEl=hd('div','q',ask);
-  const RH=104, rowY=r=>222+(r-1)*RH, CX=340, DX=260;
+  const RH=104, LG=46, rowY=r=>222+(r-1)*RH, CX=340, DX=260;
   const lines=[];
-  const mk=(id,tex,cx,r,split)=>{ const el=hd('div','ln',col); KR(el,tex); el.style.left=cx+'px'; el.style.top=rowY(r)+'px';
+  // split rows sit LG lower, which leaves room for the Positive / Negative solution labels
+  const mk=(id,tex,cx,r,split)=>{ const el=hd('div','ln',col); KR(el,tex); el.style.left=cx+'px'; el.style.top=(rowY(r)+(split?LG:0))+'px';
     const L={id,el,split}; L.P=k=>el.querySelector('.'+id+k); L.ps=ks=>ks.map(L.P).filter(Boolean);
     L.st=()=>[...el.querySelectorAll('.frac-line,.hide-tail')].filter(e=>!e.closest(`.${id}r,.${id}v,.${id}n`)||e.closest(`.${id}q`)); lines.push(L); return L; };
   const slot=(T,k,v)=>T('o'+k,'(')+T('v'+k,nt(v))+T('c'+k,')');
@@ -903,7 +1058,7 @@ function build(prob){
     if(need6) R6=[0,1].map(s=>{ const T=tg(`R6${'ab'[s]}-`); return mk(`R6${'ab'[s]}-`,X_(T)+T('v',finTex[s]),SX[s],n0+2,true); });
   }
   if(window.MT_TEST) window.__fin=finTex;
-  const finals=R7||R6||R5, nl=n0+1+(R6?1:0)+(R7?1:0), DY=-Math.max(0,nl-4)*RH;
+  const finals=R7||R6||R5;
   // fit the lines: one size for all of them (before the split they share the left part; after it each has half)
   { const w1=Math.max(...lines.filter(L=>!L.split).map(L=>box(L.el).w)), w2=Math.max(...lines.filter(L=>L.split).map(L=>box(L.el).w));
     const FS=Math.min(42,42*620/w1,42*540/w2); lines.forEach(L=>L.el.style.fontSize=FS.toFixed(1)+'px'); col.style.setProperty('--fs',FS.toFixed(1)+'px');
@@ -911,12 +1066,19 @@ function build(prob){
     const ec=L=>{ const e=box(L.P('eq')); return e.x+e.w/2; };
     const align=ls=>{ const tx=ec(ls[0]); ls.forEach(L=>{ L.el.style.left=(parseFloat(L.el.style.left)+tx-ec(L)).toFixed(1)+'px'; }); };
     align(lines.filter(L=>!L.split)); [0,1].forEach(s=>align([R5[s],R6&&R6[s],R7&&R7[s]].filter(Boolean))); }
+  // how far the work scrolls up: at the split the ± line and the two new lines (and their labels) show; while each
+  // solution is worked, everything down to its last line shows (the window is y 170 to 595)
+  const bot=Ls_=>Math.max(...Ls_.map(L=>{ const b=box(L.el); return b.y+b.h; }));
+  // a line never sits half under the top edge: scroll a little further so it's gone (the ± line must stay at the split)
+  const clean=(dy,keep)=>{ for(const L of lines.filter(L=>!L.split)){ const b=box(L.el);
+      if(b.y+dy<172&&b.y+b.h+dy>172){ const ndy=168-(b.y+b.h); if(keep&&box(keep.el).y+ndy<172) continue; dy=ndy; } } return dy; };
+  const DY1=clean(Math.min(0,582-bot(R5)),Ls), DY2=clean(Math.min(DY1,578-bot(finals)));
   // letters sitting in the formula's parentheses until the numbers knock them out
   const SL=[['b1','b',b],['b2','b',b],['a1','a',a],['c1','c',c],['a2','a',a]];
   const lets=SL.map(([k,n])=>{ const vb=box(R1.P('v'+k)), e=hd('div','let',col,n), eb=box(e);
     e.style.left=(vb.x+vb.w/2-eb.w/2).toFixed(1)+'px'; e.style.top=(vb.y+vb.h/2-eb.h/2).toFixed(1)+'px'; return e; });
   const RS=D!==0?MT.RootSplit(TL,layer,{cx:935,cy:400,F:72,maxW:430,box}):null;
-  const plan=RS?RS.setup(D,METHOD,{slice:SLICE}):null;
+  const plan=RS?RS.setup(D,METHOD,{style:SLICE?'trace':'pop',pass:'hook'}):null;
 
   // ---- helpers on the timeline
   const hlC=(bx,t0,t2,pad=6)=>{ const h=hd('div','hlbox'); col.insertBefore(h,col.firstChild);
@@ -1051,55 +1213,80 @@ function build(prob){
     }
   }
 
-  // 5. split the ±: one answer with +, one with −, then simplify each
-  t+=GAP; beat(t,'Split the ±','5');
-  TL.add(t,.8,p=>S(col,'transform',`translate(${(DX*p).toFixed(1)}px,${(DY*p).toFixed(1)}px)`),E.inOut);
-  if(RS){ fadeOut(panel,t,.35); RS.hide(t); m3.clear(t); }
-  const ts=t+.85;
-  hlC(box(Ls.P('pm')),ts,ts+1);
-  R5.forEach(L=>{ carry(L,Ls,['x','eq','nb',['r',rk],'d'],ts+.3,.8,30); travel(L.P('s'),mid(box(Ls.P('pm'))),mid(box(L.P('s'))),1,ts+.3,.8,30);
-    L.st().forEach(e=>fadeIn(e,ts+.6,.35)); flash(L.P('s'),ts+1.1,1.2); });
-  t=ts+1.6;
+  // 5. split the ± (James, 2026-10-22): the ± lights and breaks into its + and its −; the + side is the positive solution,
+  //    the − side the negative solution. Then each is solved on its own while a screen covers the other (like the board
+  //    tools' split), and the screen lifts to show both.
   const sgn=(s,v)=>s?`-${v}`:`+${v}`, ansQ=`${K('x='+finTex[0])} &nbsp;or&nbsp; ${K('x='+finTex[1])}`;
-  const kind={whole:'Two whole-number answers.',rational:'Two rational answers (fractions).',irrational:'Two irrational answers.',complex:'Two complex answers.',double:'Both answers are the same: one answer.'}[X.type];
-  if(rational) cap(t,'One answer with +, one with −.',`What is ${K(`${nt(nb)}+${X.k}`)}? And ${K(`${nt(nb)}-${X.k}`)}?`);
-  else cap(t,'One answer with +, one with −.',need6?(X.g!==1?`What can every term be divided by?`:'What happens to the 0?'):ansQ);
-  if(rational){
-    const q6=quiz?yourTurn('work out the top','5',.6):null;
-    const fr=t0=>R6.forEach((L,s)=>{ carry(L,R5[s],['x','eq','d'],t0); L.st().forEach(e=>fadeIn(e,t0+.2,.3)); });
-    if(q6!=null) fr(q6);
-    t+=GAP; beat(t,'Work out the top','5');
-    if(q6==null) fr(t);
-    R6.forEach((L,s)=>{ const t0=t+.4+s*.9, e=L.P('n'); hlC(union(R5[s].ps(['nb','s','r'])),t0,t0+.8); rise(e,t0+.45);
-      if(q6!=null) QB(col,box(e),{t:q6+.15+s*.1,fill:t0+.45,minW:50}); });
-    t+=.4+1.8+.3;
-    cap(t,R6.nums.map((n,s)=>K(`${nt(nb)}${sgn(s,X.k)}=${nt(n)}`)).join(' &nbsp;and&nbsp; '),needR7?'Simplify each fraction.':ansQ);
-    if(needR7){
-      const q7=quiz?yourTurn('simplify','5',.6):null;
-      if(q7!=null) R7.forEach((L,s)=>carry(L,R6[s],['x','eq'],q7));
-      t+=GAP; beat(t,'Simplify','5');
-      if(q7==null) R7.forEach((L,s)=>carry(L,R6[s],['x','eq'],t));
-      R7.forEach((L,s)=>{ const t0=t+.4+s*.9, e=L.P('v'), src=[...R6[s].ps(['n','d']),...R6[s].st()];
-        hlC(union(src),t0,t0+.8); rise(e,t0+.45);
-        if(q7!=null) QB(col,box(e),{t:q7+.15+s*.1,fill:t0+.45,minW:50}); });
-      t+=.4+1.8+.3;
-      cap(t,R6.nums.map((n,s)=>K(`\\frac{${nt(n)}}{${nt(den)}}=${finTex[s]}`)).join(' &nbsp;and&nbsp; '),ansQ);
-    }
-  } else if(need6){
-    const q6=quiz?yourTurn('simplify','5',.6):null;
-    if(q6!=null) R6.forEach((L,s)=>carry(L,R5[s],['x','eq'],q6));
-    t+=GAP; beat(t,'Simplify','5');
-    if(q6==null) R6.forEach((L,s)=>carry(L,R5[s],['x','eq'],t));
-    R6.forEach((L,s)=>{ const t0=t+.4+s*.9, e=L.P('v'); hlC(union([...R5[s].ps(['nb','s','r','d']),...R5[s].st()]),t0,t0+.8); rise(e,t0+.45);
-      if(q6!=null) QB(col,box(e),{t:q6+.15+s*.1,fill:t0+.45,minW:60}); });
-    t+=.4+1.8+.3;
-    const g=X.g, why=(g!==1?`Divide every term by ${fm(g)}`+(g<0?' (dividing by a negative flips each sign)':'')+'.':'')+(nb===0?' The 0 drops off.':'');
-    cap(t,why.trim(),ansQ);
+  const kind={whole:'Two whole-number solutions.',rational:'Two rational solutions (fractions).',irrational:'Two irrational solutions.',complex:'Two complex solutions.',double:'Both solutions are the same: one answer.'}[X.type];
+  const SIDE=['positive','negative'], Side=['Positive','Negative'];
+  t+=GAP; beat(t,'Split the ±','5');
+  TL.add(t,.8,p=>S(col,'transform',`translate(${(DX*p).toFixed(1)}px,${(DY1*p).toFixed(1)}px)`),E.inOut);
+  if(RS){ fadeOut(panel,t,.35); RS.hide(t); m3.clear(t); }
+  const ts=t+.85, pmE=Ls.P('pm'), pmB=box(pmE), pmM=mid(pmB);
+  hlC(pmB,ts,ts+1.9);
+  TL.add(ts+.15,.7,p=>S(pmE,'scale',(1+.45*Math.sin(p*Math.PI)).toFixed(3)),E.inOut);
+  const tsp=ts+.8;
+  // the + leaves from the top of the ±, the − from the bottom
+  const labs5=R5.map((L,s)=>{ const sE=L.P('s'), from={x:pmM.x,y:pmM.y+(s?.2:-.16)*pmB.h};
+    carry(L,Ls,['x','eq','nb',['r',rk],'d'],tsp,.8,30); travel(sE,from,mid(box(sE)),1.35,tsp,.9,s?10:30);
+    L.st().forEach(e=>fadeIn(e,tsp+.3,.35));
+    const lb=box(L.el), tag=hd('div','solab',col,`<span class="sg">${s?'−':'+'}</span>${Side[s]} solution`);
+    tag.style.left=(lb.x+lb.w/2).toFixed(1)+'px'; tag.style.top=(lb.y-30).toFixed(1)+'px';
+    const tl=tsp+.95+s*.35; hlC(box(sE),tl,tl+1.1,4); fadeIn(tag,tl,.35,-8); flash(sE,tl,1.2);
+    return tag; });
+  t=tsp+.95+.35+.9;
+  const work=rational||need6;
+  const firstQ=s=>rational?`What is ${K(`${nt(nb)}${sgn(s,X.k)}`)}?`:(X.g!==1?'What can every term be divided by?':'What happens to the 0?');
+  cap(t,`${K('\\pm')} means plus or minus: the ${K('+')} gives the positive solution, the ${K('-')} gives the negative solution.`,
+    work?`The positive solution first. ${firstQ(0)}`:`Neither one simplifies. What are the two solutions?`);
+
+  // the screen: hides the side we aren't working on, from its first line to its last
+  const sideBox=s=>{ const b=union([R5[s],R6&&R6[s],R7&&R7[s]].filter(Boolean).map(L=>L.el)); return {x:b.x-24,y:b.y-14,w:b.w+48,h:b.h+28}; };
+  const ring=s=>{ const L=finals[s], rhs=L.P('v'), els=rhs?[rhs]:[...L.ps(['nb','s','r','n','d']),...L.st()];
+    const bx=union(els), r=hd('div','ansbox',col); Object.assign(r.style,{left:(bx.x-5)+'px',top:(bx.y-8)+'px',width:(bx.w+12)+'px',height:(bx.h+16)+'px'}); return r; };
+  if(work){
+    const B=[sideBox(0),sideBox(1)].map((b,_,A)=>{ const w=Math.max(A[0].w,A[1].w,300); return {x:b.x+b.w/2-w/2,y:b.y,w,h:b.h}; }), top=Math.min(B[0].y,B[1].y), hgt=Math.max(B[0].y+B[0].h,B[1].y+B[1].h)-top;
+    const sc=hd('div','qscreen',col), nx=hd('span','',sc,'Next'), dn=hd('span','',sc,'Already solved');
+    const place=(x,w)=>{ S(sc,'left',x.toFixed(1)+'px'); S(sc,'width',w.toFixed(1)+'px'); };
+    S(sc,'top',top.toFixed(1)+'px'); S(sc,'height',hgt.toFixed(1)+'px'); place(B[1].x,B[1].w);
+    const lerp=(a,b,p)=>a+(b-a)*p;
+    const steps=s=>{ const L=[];
+      if(rational){ L.push({name:'work out the top',Ln:R6[s],Lo:R5[s],keep:['x','eq','d'],frame:true,e:'n',src:R5[s].ps(['nb','s','r']),
+          say:K(`${nt(nb)}${sgn(s,X.k)}=${nt(R6.nums[s])}`),nq:needR7?'Simplify the fraction.':null});
+        if(needR7) L.push({name:'simplify',Ln:R7[s],Lo:R6[s],keep:['x','eq'],e:'v',src:[...R6[s].ps(['n','d']),...R6[s].st()],
+          say:K(`\\frac{${nt(R6.nums[s])}}{${nt(den)}}=${finTex[s]}`),nq:null}); }
+      else { const g=X.g; L.push({name:'simplify',Ln:R6[s],Lo:R5[s],keep:['x','eq'],e:'v',src:[...R5[s].ps(['nb','s','r','d']),...R5[s].st()],
+          say:((g!==1?`Divide every term by ${fm(g)}`+(g<0?' (dividing by a negative flips each sign)':'')+'.':'')+(nb===0?' The 0 drops off.':'')).trim(),nq:null}); }
+      return L; };
+    [0,1].forEach(s=>{
+      steps(s).forEach((st,j)=>{
+        const qn=quiz?yourTurn(`${st.name} (${SIDE[s]} solution)`,'5',.6+(j===0?.9:0)):null;
+        const go=t0=>{ carry(st.Ln,st.Lo,st.keep,t0); if(st.frame) st.Ln.st().forEach(e=>fadeIn(e,t0+.2,.3)); };
+        t+=GAP; beat(t,`${Side[s]} solution: ${st.name}`,'5');
+        let t0=t;
+        if(j===0){ const tc=qn!=null?qn:t;
+          if(s===0){ TL.add(tc,.6,p=>{ S(sc,'opacity',p); S(sc,'transform',`translateY(${((1-p)*-24).toFixed(1)}px)`); },E.out);
+            if(DY2<DY1) TL.add(tc,.6,p=>S(col,'transform',`translate(${DX}px,${(DY1+(DY2-DY1)*p).toFixed(1)}px)`),E.inOut); }
+          else { TL.add(tc,.8,p=>place(lerp(B[1].x,B[0].x,p),lerp(B[1].w,B[0].w,p)),E.inOut); }
+          TL.at(tc+(s?.4:0),past=>{ const k=s?past:false; S(nx,'display',k?'none':''); S(dn,'display',k?'':'none'); });
+          if(qn==null) t0=t+.9; }
+        if(qn!=null) go(qn); else go(t0);
+        const e=st.Ln.P(st.e), te=t0+.4;
+        hlC(union(st.src),te,te+.8); rise(e,te+.45);
+        if(qn!=null) QB(col,box(e),{t:qn+(j===0?.95:.15),fill:te+.45,minW:50});
+        t=te+1.3;
+        const last=j===steps(s).length-1;
+        if(last) fadeIn(ring(s),t-.2,.5);
+        cap(t,st.say,!last?st.nq:s===0?`Now the negative solution. ${firstQ(1)}`:'What are the two solutions?');
+      });
+    });
+    t+=GAP; beat(t,'Both solutions','5');
+    TL.add(t,.6,p=>{ S(sc,'opacity',1-p); S(sc,'transform',`translateY(${(-24*p).toFixed(1)}px)`); },E.inOut);
+    t+=.8; cap(t,kind,ansQ);
+  } else {
+    [0,1].forEach(s=>fadeIn(ring(s),t,.5));
+    t+=.6; cap(t,kind,ansQ);
   }
-  // the answers get a green ring
-  finals.forEach(L=>{ const rhs=L.P('v')||null; const els=rhs?[rhs]:[...L.ps(['nb','s','r','n','d']),...L.st()];
-    const bx=union(els), r=hd('div','ansbox',col); Object.assign(r.style,{left:(bx.x-5)+'px',top:(bx.y-8)+'px',width:(bx.w+12)+'px',height:(bx.h+16)+'px'}); fadeIn(r,t,.5); });
-  t+=.6; cap(t,kind,ansQ);
 
   caps.sort((x,y)=>x.t-y.t);
   caps.forEach((cp,i)=>{ const pv=caps[i-1]||{say:'',q:''}; TL.at(cp.t,past=>{ setHTML(sayEl,past?cp.say:pv.say); setHTML(qEl,past?cp.q:pv.q); }); });
@@ -1158,7 +1345,7 @@ syncMethod();
 const sbtns=[...document.querySelectorAll('#slicepick button')];
 const syncSlice=()=>sbtns.forEach(bt=>bt.setAttribute('aria-pressed',String((bt.dataset.s==='on')===SLICE)));
 sbtns.forEach(bt=>bt.addEventListener('click',()=>{ const v=bt.dataset.s==='on'; if(v===SLICE) return; SLICE=v; syncSlice();
-  try{ localStorage.setItem('mt-quad-slice',v?'on':'off'); }catch(e){}
+  try{ localStorage.setItem('mt-quad-blade',v?'on':'off'); }catch(e){}
   if(!current) return; const cs=curStep(); show(current,cs==='4'||cs==='5'?'root':TL.time); }));
 syncSlice();
 if(window.MT_TEST) window.__quad={get fin(){return window.__fin;},TL,show,stage,setMethod,PRESETS,get stageAt(){return stageAt;}};

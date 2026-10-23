@@ -143,7 +143,7 @@ kbd{font-family:var(--mono);font-size:.78rem;border:1px solid var(--line);border
 .c3 h3 .hlword{white-space:nowrap;background:color-mix(in srgb,var(--hl) 80%,transparent);border-radius:6px;padding:0 5px}
 .c3 .row{display:flex;align-items:center;gap:14px;min-height:62px}
 .c3 .row+.row{border-top:1px solid var(--line)}
-.c3 .lab{flex:none;width:112px;font:600 18px var(--display);color:var(--muted)}
+.c3 .lab{flex:none;width:96px;font:600 16px/1.2 var(--display);color:var(--muted)}
 .c3 .mx{font-size:30px;white-space:nowrap;line-height:1;position:relative}
 .c3 .slot{display:inline-block;min-width:1.1em;border-bottom:3px dashed var(--muted)}
 
@@ -164,26 +164,35 @@ kbd{font-family:var(--mono);font-size:.78rem;border:1px solid var(--line);border
 .modes button{border:none;background:transparent}
 .modes button[aria-pressed="true"]{background:var(--accent);color:var(--panel)}
 .toggle{width:auto}
+
+/* 2026-10-22: the card's "Multiply it out" row, its ✓ / missing marks, and the a ≠ 1 "really added" arrow and tag */
+.c3 .r3row{padding-bottom:22px}
+.c3 .mk{position:absolute;transform:translateX(-50%);font:700 18px var(--display);white-space:nowrap;line-height:1}
+.c3 .mk.ok{color:var(--res)} .c3 .mk.no{color:var(--no)}
+.why{position:absolute;overflow:visible;pointer-events:none}
+.why path{fill:none;stroke:var(--ink);stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.whytag{transform:translateX(-50%);white-space:nowrap;line-height:1;color:var(--ink);background:color-mix(in srgb,var(--hl) 55%,transparent);border-radius:8px;padding:4px 10px}
+.whytag .enclosing{display:inline-block}
 </style>
 
 <div class="wrap">
   <header>
     <h1>Completing the Square</h1>
-    <p class="sub">If only it was a perfect square: find the third number that makes it one, then solve the equation or write vertex form.</p>
+    <p class="sub">If only it was a perfect square: find the third number that makes it one, then write vertex form or solve the equation.</p>
   </header>
 
   <form class="panel formcard" id="form" autocomplete="off">
     <div class="modes" role="group" aria-label="What we want at the end">
-      <button type="button" id="m-solve" aria-pressed="true">Solve the equation</button>
-      <button type="button" id="m-vertex" aria-pressed="false">Vertex form</button>
+      <button type="button" id="m-vertex" aria-pressed="true">Vertex form</button>
+      <button type="button" id="m-solve" aria-pressed="false">Solve the equation</button>
     </div>
     <div class="eqrow">
-      <input id="eq" class="mathinput" value="x² + 6x + 5 = 0" spellcheck="false" aria-label="Quadratic, like x² + 6x + 5 = 0 or f(x) = x² + 6x + 5" aria-describedby="err">
+      <input id="eq" class="mathinput" value="f(x) = x² + 6x + 5" spellcheck="false" aria-label="Quadratic, like x² + 6x + 5 = 0 or f(x) = x² + 6x + 5" aria-describedby="err">
       <button class="primary" type="submit">Build</button>
     </div>
     <p class="err" id="err" hidden></p>
-    <div class="chips" id="pre-solve"><span>Solve</span></div>
     <div class="chips" id="pre-vertex"><span>Vertex form</span></div>
+    <div class="chips" id="pre-solve"><span>Solve</span></div>
     <label class="toggle"><input type="checkbox" id="pic"> Area picture: the square with its missing corner</label>
     <label class="toggle"><input type="checkbox" id="quiz"> Quiz mode: blank boxes first, answers on the next click</label>
   </form>
@@ -675,15 +684,15 @@ const {$,hd,sv,S,A,E,lerp,fontsReady}=MT.util;
 const {T,term,vtex,paren}=CS;
 const W=1200, H=700, GAP=.35, COLX=770, TOP=22, BOT=590;
 const TL=MT.Timeline();
-let stageAt=[], current=null, jumped=null, mode='solve', items=[];
+let stageAt=[], current=null, jumped=null, mode='vertex', items=[];
 const transport=MT.transport(TL,{onSync:showStage});
 const stage=$('stage'), wrapEl=$('stagewrap');
 const ST=MT.Stage(TL,stage,wrapEl,W,H), {box,union,mid,at,fadeIn,fadeOut,hlOver,flash,setHTML}=ST;
 const KO={trust:true,strict:'ignore',throwOnError:false,output:'html'};
 const KX=tex=>katex.renderToString(tex,KO), KR=(el,tex)=>katex.render(tex,el,KO);
 const EQ='\\mathrel{\\htmlClass{eq}{=}}', FX='f(\\htmlClass{vx}{x})', VX='\\htmlClass{vx}{x}';
-const PRESETS={solve:['x² + 6x + 5 = 0','x² − 8x + 12 = 0','x² + 4x − 7 = 0','x² + 5x + 4 = 0','x² + 2x = 8','2x² + 12x + 10 = 0','x² − 2x + 3 = 0'],
-  vertex:['f(x) = x² + 6x + 5','f(x) = x² − 4x + 7','f(x) = x² + 3x − 1','f(x) = 2x² − 8x + 3','f(x) = −x² + 6x − 2']};
+const PRESETS={vertex:['f(x) = x² + 6x + 5','f(x) = x² − 4x + 7','f(x) = x² + 3x − 1','f(x) = 2x² − 8x + 3','f(x) = −x² + 6x − 2'],
+  solve:['x² + 6x + 5 = 0','x² − 8x + 12 = 0','x² + 4x − 7 = 0','x² + 5x + 4 = 0','x² + 2x = 8','2x² + 12x + 10 = 0','x² − 2x + 3 = 0']};
 let picOn=false; try{ picOn=localStorage.getItem('mt-square-picture')==='on'; }catch(e){}
 
 // ---- work lines: one KaTeX line each, lined up on its = sign; op rows ("−5 under both sides") reserve a row between
@@ -731,8 +740,11 @@ function build(p){
   if(solve&&p.c!==0) opM=mkOp();
   const pAB='\\mathbin{\\htmlClass{pA}{+}}'+T('nA','\\;'+vtex(n)+'\\;');
   const L1=mkLine(solve?term(1,2,true,'c2')+term(B,1,false,'c1')+pAB+EQ+T('cr',vtex(P.R))+'\\mathbin{\\htmlClass{pB}{+}}'+T('nB',vtex(n))
-    :FX+EQ+(A1?'':T('ca',aTex))+'\\left('+term(1,2,true,'c2')+term(B,1,false,'c1')+pAB+'\\right)'+term(p.c,0,false,'c0')
-      +`\\mathbin{\\htmlClass{pB}{${a>0?'-':'+'}}}`+(Math.abs(a)!==1?T('aB',Math.abs(a)+'\\,\\cdot\\,'):'')+T('nB',vtex(n)));
+    :FX+EQ+(A1?'':T('ca',aTex))+'('+term(1,2,true,'c2')+term(B,1,false,'c1')
+      +'\\mathbin{\\htmlClass{rps}{+}}'+T('rpn',vtex(n))+'\\mathbin{\\htmlClass{rms}{-}}'+T('rmn',vtex(n))+T('rpar',')')+term(p.c,0,false,'c0')
+      +`\\mathbin{\\htmlClass{pB}{${a>0?'-':'+'}}}`+T('nB',vtex(n.mul(Math.abs(a)))));
+  const aa=Math.abs(a), prod=n.mul(aa), sgn=a>0?'-':'+';
+  const LV=L1; // the line the perfect square is read from
   const sq=`\\left(${VX}${term(h,0,false,'hs')}\\right)^2`;
   const L3=mkLine(solve?sq+EQ+T('kr',vtex(P.K)):FX+EQ+(A1?'':aTex)+sq+term(P.k,0,false,'kr'));
   let L4=null, opS=null, L5=null, L6=null, VL=null;
@@ -744,11 +756,21 @@ function build(p){
     const An=P.answers;
     if(An.kind==='two') L6=mkLine(VX+EQ+T('v1',vtex(An.v1))+`\\quad\\text{or}\\quad ${VX}=`+T('v2',vtex(An.v2)));
     else if(An.kind==='frac') L6=mkLine(VX+EQ+T('v1',An.tex));
-  } else VL=mkLine('\\text{vertex}'+EQ+'\\left('+T('vh',vtex(h.neg()))+',\\;'+T('vk',vtex(P.k))+'\\right)');
+  }
+  // vertex form with a ≠ 1: the outside is worked out on its own row (c − a·n → c − product → k), never inline
+  const side=!solve&&!A1&&p.c!==0, mulStage=false, addStage=side;
+  let LW=null;
+  if(side){
+    const left=(p.c?T('w3',vtex(p.c))+`\\mathbin{\\htmlClass{wm}{${sgn}}}`:T('wm',sgn==='-'?'-':''))+T('wa',vtex(prod));
+    const mid=mulStage?(p.c?T('x3',vtex(p.c))+`\\mathbin{\\htmlClass{xm}{${sgn}}}`:T('xm',sgn==='-'?'-':''))+T('x8',vtex(prod)):'';
+    LW=mkLine(left+(mulStage?EQ+mid:'')+(addStage?(mulStage?'\\mathrel{\\htmlClass{eq2}{=}}':EQ)+T('wk',vtex(P.k)):''));
+  }
+  if(!solve) VL=mkLine('\\text{vertex}'+EQ+'\\left('+T('vh',vtex(h.neg()))+',\\;'+T('vk',vtex(P.k))+'\\right)');
   const FS=layout();
 
   // pieces that show up later in their line (the lines themselves start hidden)
-  const later=[L1.P('pA'),L1.P('nA'),L1.P('pB'),L1.P('aB'),L1.P('nB')];
+  if(!solve&&!A1) [L1.P('ca'),L1.P('c2'),...[L1.P('c1s'),L1.P('c1')]].filter(Boolean).forEach(e=>S(e,'opacity',0));
+  const later=[L1.P('pA'),L1.P('nA'),L1.P('pB'),L1.P('nB'),L1.P('rps'),L1.P('rpn'),L1.P('rms'),L1.P('rmn')];
   if(L4) later.push(L4.P('pm'),L4.P('rad'),L4.P('eq2'),L4.P('rs'));
   later.filter(Boolean).forEach(e=>S(e,'opacity',0));
   const pc=(L,k)=>[L.P(k+'s'),L.P(k)].filter(Boolean); // a signed term's pieces
@@ -756,21 +778,28 @@ function build(p){
 
   // the "If only" card
   const card=hd('div','c3',stage);
+  // James (2026-10-22): divide b by 2, then SHOW the perfect square (x + h)², multiply it out, match the first two parts
+  // with the line, and show the third part is the one that's missing
   card.innerHTML=`<h3>If only this was a <span class="hlword">perfect square</span>…</h3>`
-    +`<div class="row"><span class="lab">Half of <em style="font-family:var(--serif)">b</em></span><span class="mx r1"></span></div>`
-    +`<div class="row"><span class="lab">Square it</span><span class="mx r2"></span></div>`;
-  const r1=card.querySelector('.r1'), r2=card.querySelector('.r2');
-  KR(r1,`\\tfrac{1}{2}\\cdot ${T('cb',paren(B))}\\mathrel{\\htmlClass{ce1}{=}}${T('ch',vtex(h))}`);
-  KR(r2,`${T('cq',paren(h))}^2\\mathrel{\\htmlClass{ce2}{=}}${T('cn',vtex(n))}`);
+    +`<div class="row"><span class="lab"><em style="font-family:var(--serif)">b</em> ÷ 2</span><span class="mx r1"></span></div>`
+    +`<div class="row"><span class="lab">Perfect square</span><span class="mx r2"></span></div>`
+    +`<div class="row r3row"><span class="lab">Multiply out</span><span class="mx r3"></span></div>`;
+  const r1=card.querySelector('.r1'), r2=card.querySelector('.r2'), r3=card.querySelector('.r3');
+  KR(r1,`${T('cb',paren(B))}\\div 2\\mathrel{\\htmlClass{ce1}{=}}${T('ch',vtex(h))}`);
+  KR(r2,`\\left(${VX}${term(h,0,false,'cp')}\\right)^2`);
+  KR(r3,`\\htmlClass{ce3}{=}\\;${T('e2',VX+'^2')}${term(B,1,false,'e1')}${term(n,0,false,'e0')}`);
   const C$=k=>card.querySelector('.'+k);
-  ['cb','ce1','ch','cq','ce2','cn'].forEach(k=>S(C$(k),'opacity',0));
+  for(const r of [r1,r2,r3]){ const w=r.getBoundingClientRect().width/(stage.getBoundingClientRect().width/W); if(w>226) r.style.fontSize=(30*226/w).toFixed(1)+'px'; }
+  const cpEls=[C$('cps'),C$('cp')].filter(Boolean), e1Els=[C$('e1s'),C$('e1')].filter(Boolean), e0Els=[C$('e0s'),C$('e0')].filter(Boolean);
+  [C$('cb'),C$('ce1'),C$('ch'),...cpEls,r3].forEach(e=>S(e,'opacity',0));
   S(card,'opacity',0);
   const cardB=box(card);
 
   // the blank where the third number goes
-  const nAb=box(L1.P('nA')), bw=Math.max(nAb.w-6,FS*.95), bh=nAb.h+14;
-  const blank=at('blank','?',nAb.x+nAb.w/2-bw/2,nAb.y+nAb.h/2-bh/2); blank.style.width=bw+'px'; blank.style.height=bh+'px'; blank.style.fontSize=(FS*.85)+'px';
-  const glow=hd('div','glow',blank); S(blank,'opacity',0);
+  let blank=null, glow=null; // solve mode only; vertex form adds a zero instead
+  if(solve){ const nAb=box(L1.P('nA')), bw=Math.max(nAb.w-6,FS*.95), bh=nAb.h+14;
+    blank=at('blank','?',nAb.x+nAb.w/2-bw/2,nAb.y+nAb.h/2-bh/2); blank.style.width=bw+'px'; blank.style.height=bh+'px'; blank.style.fontSize=(FS*.85)+'px';
+    glow=hd('div','glow',blank); S(blank,'opacity',0); }
 
   // ---- the area picture (off by default): x² and the x term as one strip; half of it turns down; the missing corner
   let pic=null;
@@ -842,7 +871,7 @@ function build(p){
   const qAfterA=needMove?qMove:qIf;
   if(A1) cap(t,`${KX('a = 1')}: an invisible 1 in front of ${KX('x^2')}. Nothing to do.`,qAfterA);
   else if(solve) cap(t,`${KX('a = '+a)}, not 1. Divide everything by ${N(a)} first.`,'What does each term become?');
-  else cap(t,`${KX('a = '+a)}, not 1. Factor ${N(a)} out of the ${KX('x')} terms (leave the ${N(p.c)} alone).`,'What’s left inside the parentheses?');
+  else cap(t,`${KX('a = '+a)}, not 1. Pull ${N(a)} out of the first two terms (leave the ${N(p.c)} alone).`,'What’s left inside the parentheses?');
 
   let L1shown=false;
   if(!A1&&solve){
@@ -856,10 +885,35 @@ function build(p){
   }
   if(!A1&&!solve){
     const qf=quiz?yourTurn('factor out a','a',.6):null;
-    t+=GAP; beat(t,'Factor a out of the x terms','a');
-    hlOver(union([L0.P('a2'),...pc(L0,'a1')]),t,t+1.1,6);
-    writeLine(L1,[pc(L1,'c1')],t+.6,t+.9,qf); L1shown=true;
-    t+=1.8; cap(t,`${KX(term(a,2,true)+term(p.b,1,false))} = ${KX(aTex+'('+bxTex(B)+')')}. Leave room inside the parentheses.`,qIf);
+    if(qf!=null) fadeIn(L1.el,qf,.4);
+    // James 2026-10-22: "The students should see a and b get highlighted, make the division look like a fraction as a and b
+    // are divided by a, then the denominator flies to the left and is the number outside the parentheses"
+    const sA=L0.P('a2c'), sB=L0.P('a1c')||L0.P('a1'), caEl=L1.P('ca'), inside=[L1.P('c2'),...pc(L1,'c1')];
+    // the fractions sit where the inside of the parentheses will be
+    const fr=at('wl fracs',KX(`\\frac{\\htmlClass{fn2}{${CS.term(a,2,true)}}}{\\htmlClass{fd2}{${a}}}\\mathbin{${p.b<0?'-':'+'}}\\frac{\\htmlClass{fn1}{${CS.term(Math.abs(p.b),1,true)}}}{\\htmlClass{fd1}{${a}}}`),0,0);
+    fr.style.fontSize=(FS*1.2)+'px'; S(fr,'opacity',0);
+    { const ib=union(inside), b=box(fr); fr.style.left=(ib.x-4)+'px'; fr.style.top=(ib.y+ib.h/2-b.h/2)+'px'; }
+    const dens=[fr.querySelector('.fd2'),fr.querySelector('.fd1')];
+    t+=GAP; beat(t,'Divide the first two terms by a','a');
+    hlOver(box(sA),t,t+1.2,5); hlOver(box(sB),t,t+1.2,5);
+    if(qf==null) fadeIn(L1.el,t+.6,.45,10);
+    fadeIn(fr,t+.7,.45,-10);
+    dens.forEach(d=>hlOver(box(d),t+1.2,t+2.1,4));
+    t+=2.2;
+    cap(t,`Divide ${KX(term(a,2,true))} and ${KX(term(p.b,1,true))} by ${N(a)}.`,`Where does the ${N(a)} go?`);
+    t+=GAP; beat(t,'a comes out front','a');
+    // the real denominators fly left and land as the number in front of the parentheses
+    const cb=box(caEl), tl=t+.2, dl=.9, land=tl+dl;
+    dens.forEach((d,i)=>{ const db=box(d), dxy={x:mid(cb).x-mid(db).x,y:mid(cb).y-mid(db).y};
+      TL.add(tl,dl,q=>{ S(d,'transform',`translate(${(dxy.x*q).toFixed(1)}px,${(dxy.y*q-Math.sin(q*Math.PI)*(30+i*30)).toFixed(1)}px)`); S(d,'opacity',q<.9?1:1-(q-.9)*10); },E.inOut); });
+    TL.at(land,past=>S(caEl,'opacity',past?1:0)); flash(caEl,land,1.2);
+    // the fractions go, and what's left inside simplifies, green
+    fadeOut(fr,land+.05,.3);
+    if(qf!=null) QB(union(pc(L1,'c1')),{t:qf+.15,fill:land+.25,minW:44});
+    inside.forEach(e=>TL.at(land+.25,past=>S(e,'opacity',past?1:0))); flash(inside,land+.25,1.4);
+    L1shown=true;
+    t=land+.9;
+    cap(t,`${KX(`\\frac{${CS.term(a,2,true)}}{${a}}`)} = ${KX('x^2')} and ${KX(`\\frac{${CS.term(p.b,1,true)}}{${a}}`)} = ${KX(CS.term(B,1,true))}. The ${N(a)} waits out front. Leave room inside.`,qIf);
   }
 
   // 2. move c away (leave room)
@@ -885,16 +939,23 @@ function build(p){
 
   // 3. If only it was a perfect square: what's the third number?
   const tIf=t+GAP; clearMarks(tIf);
+  // a yellow light inside the card (the card's background would hide one on the stage)
+  const hlCard=(els,t0,t1,pad=6)=>{ const b=inCard(union(els)), e=hd('div','hlbox'); card.insertBefore(e,card.firstChild);
+    Object.assign(e.style,{left:(b.x-pad)+'px',top:(b.y-pad/2)+'px',width:(b.w+2*pad)+'px',height:(b.h+pad)+'px'});
+    TL.add(t0,.25,q=>S(e,'opacity',q),E.out); TL.add(t0+.25,Math.max(.05,t1-t0-.25),q=>S(e,'opacity',.75+.25*Math.cos(q*Math.PI*4)),E.lin); TL.add(t1,.3,q=>S(e,'opacity',1-q)); };
+  const markUnder=(els,html,cls)=>{ const b=inCard(union(els)), e=hd('div','mk '+cls,card,html); e.style.left=(b.x+b.w/2)+'px'; e.style.top=(b.y+b.h+4)+'px'; S(e,'opacity',0); return e; };
   t+=GAP; beat(t,'If only it was a perfect square','ifonly');
-  if(!L1shown) fadeIn(L1.el,t,.45,10);
-  fadeIn(L1.P('pA'),t+.2,.3); fadeIn(blank,t+.2,.3);
+  if(!L1shown&&solve) fadeIn(L1.el,t,.45,10);
+  if(solve){ fadeIn(L1.P('pA'),t+.2,.3); fadeIn(blank,t+.2,.3); }
   fadeIn(card,t+.2,.35);
   if(pic) fadeIn(pic.svg,t+.2,.35);
   t+=1;
   cap(t,`If only ${KX(bxTex(B)+'+\\;?')} was a perfect square, we could square root it.`,'What would the third number need to be?');
-  const qh=quiz?yourTurn('half of b','ifonly',.6,'What is half of b?'):null;
+
+  // divide b by 2
+  const qh=quiz?yourTurn('b ÷ 2','ifonly',.6,`What is ${KX(paren(B)+'\\div 2')}?`):null;
   if(qh!=null) MT.quiz.box(TL,card,inCard(box(C$('ch'))),{t:qh+.1,fill:t+GAP+1.35,minW:44});
-  t+=GAP; beat(t,'Half of b','ifonly');
+  t+=GAP; beat(t,'Divide b by 2','ifonly');
   const bSrc=[L1.P('c1s'),L1.P('c1c')||L1.P('c1')].filter(Boolean);
   const land1=lit(bSrc,L1.P('c1c')||L1.P('c1'),C$('cb'),C$('cb'),t,KX(vtex(B)));
   fadeIn(C$('ce1'),land1+.15,.3); fadeIn(C$('ch'),land1+.15,.35); flash(C$('ch'),land1+.15,1.4);
@@ -906,62 +967,203 @@ function build(p){
       A(g2,'transform',`translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${(-90*q).toFixed(1)}) translate(${-hw/2} ${-s/2})`); },E.inOut);
     fadeIn(pic.hLeft,t0+1.3,.3); fadeIn(pic.hIn2,t0+1.3,.3); fadeIn(pic.corner,t0+1.4,.3); fadeIn(pic.cq,t0+1.4,.3);
     t=t0+1.8; }
-  cap(t,`Half of ${N(B)} is ${N(h)}.`+(pic&&pic.g2?' Half the strip turns down, and the square has a missing corner.':''),`Now square it. What is ${KX(paren(h)+'^2')}?`);
-  const qs=quiz?yourTurn('square it','ifonly',.6,`What is ${KX(paren(h)+'^2')}?`):null;
-  if(qs!=null) MT.quiz.box(TL,card,inCard(box(C$('cn'))),{t:qs+.1,fill:t+GAP+1.35,minW:44});
-  t+=GAP; beat(t,'Square it','ifonly');
-  const land2=lit(C$('ch'),C$('ch'),C$('cq'),C$('cq'),t,KX(vtex(h)));
-  fadeIn(C$('ce2'),land2+.15,.3); fadeIn(C$('cn'),land2+.15,.35); flash(C$('cn'),land2+.15,1.4);
-  if(pic&&pic.g2){ TL.at(land2+.15,past=>pic.corner.classList.toggle('full',past)); fadeOut(pic.cq,land2+.15,.2); fadeIn(pic.cn,land2+.2,.3); }
-  t=land2+.7;
-  const neg=h.sign<0;
-  cap(t,`${KX(paren(h)+'^2')} = ${N(h)} · ${N(h)} = ${N(n)}.`+(neg?' A negative times a negative is positive.':'')+(pic&&pic.g2?` The missing corner is ${N(h)} by ${N(h)}.`:''),`Where does the ${N(n)} go?`);
-  t+=GAP; beat(t,'The third number','ifonly');
-  const land3=lit(C$('cn'),C$('cn'),L1.P('nA'),L1.P('nA'),t,KX(vtex(n)));
-  fadeOut(blank,land3-.05,.25);
-  TL.add(tIf+.2,land3-tIf-.2,q=>S(glow,'opacity',(.55+.35*Math.sin(q*Math.PI*2*Math.max(2,Math.round((land3-tIf)/1.2)))).toFixed(3)),E.lin);
-  t=land3+.6;
-  const perfect=KX(bxTex(B)+'+'+vtex(n));
-  cap(t,`${perfect} is a perfect square.`,solve?`We added ${N(n)} to the left side. What do we do to the right side?`
-    :A1?`We added ${N(n)}. How do we keep ${KX('f(x)')} the same?`:`The ${N(n)} is inside ${KX(aTex+'(\\;)')}. How much did we really add?`);
+  const sqH=`\\left(x${term(h,0,false)}\\right)^2`;
+  cap(t,`${KX(paren(B)+'\\div 2')} = ${N(h)}.`+(pic&&pic.g2?' Half the strip turns down: the square has a missing corner.':''),`So which perfect square is it? ${KX('(x\\;\\;\\;\\;)^2')}`);
 
-  // 4. add it to both sides / add it, then take it back away
+  // show the perfect square
+  const qp=quiz?yourTurn('the perfect square','ifonly',.6):null;
+  if(qp!=null) MT.quiz.box(TL,card,inCard(union(cpEls)),{t:qp+.1,fill:t+GAP+1.2,minW:44});
+  t+=GAP; beat(t,'The perfect square','ifonly');
+  const landP=lit(C$('ch'),C$('ch'),cpEls,cpEls,t,KX(vtex(h)));
+  t=landP+.6;
+  cap(t,`If only it was ${KX(sqH)}.`,`Multiply it out: what is ${KX(sqH)}?`);
+
+  // multiply it out
+  const qe=quiz?yourTurn('multiply it out','ifonly',.6):null;
+  const eAll=[C$('e2'),...e1Els,...e0Els];
+  t+=GAP; beat(t,'Multiply it out','ifonly');
+  if(qe!=null){ fadeIn(r3,qe,.3); [[C$('e2')],e1Els,e0Els].forEach((g,i)=>{ g.forEach(e=>TL.at(t+.3+i*.35,past=>S(e,'opacity',past?1:0))); MT.quiz.box(TL,card,inCard(union(g)),{t:qe+.1+i*.08,fill:t+.3+i*.35,minW:36,padX:2}); }); }
+  else { fadeIn(r3,t,.01); S(r3,'opacity',0); [[C$('ce3')],[C$('e2')],e1Els,e0Els].forEach((g,i)=>g.forEach(e=>{ S(e,'opacity',0); fadeIn(e,t+.05+i*.35,.3,-8); })); }
+  hlCard(cpEls.concat([C$('cp')]),t,t+1.4,4);
+  flash(eAll,t+.3,1.6);
+  t+=1.9;
+  cap(t,`${KX(sqH)} = ${KX(`\\left(x${term(h,0,false)}\\right)\\left(x${term(h,0,false)}\\right)`)} = ${KX(bxTex(B)+'+'+vtex(n))}`+(h.sign<0?`: ${KX(paren(h)+'^2')} is positive.`:'.'),'Which parts do we already have?');
+
+  // match it up: the first two parts are already in the line; the third one is missing
+  t+=GAP; beat(t,'Match it up','ifonly');
+  const ok2=markUnder([C$('e2')],'✓','ok'), ok1=markUnder(e1Els,'✓','ok'), miss=markUnder(e0Els,'missing','no');
+  const lineX2=[L1.P('c2')], lineX1=pc(L1,'c1');
+  hlCard([C$('e2')],t,t+.9,4); hlOver(union(lineX2),t,t+.9,5); fadeIn(ok2,t+.45,.25);
+  hlCard(e1Els,t+.9,t+1.8,4); hlOver(union(lineX1),t+.9,t+1.8,5); fadeIn(ok1,t+1.35,.25);
+  hlCard(e0Els,t+1.8,t+3.1,4); fadeIn(miss,t+2.1,.25);
+  t+=3.2;
+  cap(t,`${KX('x^2')} ✓ and ${KX(CS.term(B,1,true))} ✓ are already there. The ${KX('+'+vtex(n))} is missing.`,
+    solve?`We add ${N(n)} to the left side. What about the right side?`:`How do we put in a ${KX('+'+vtex(n))} without changing ${KX('f(x)')}?`);
+
+  // 4. add it to both sides / add it inside and take it away outside, at the same time
   const tAdd=t+GAP; clearMarks(tAdd);
-  const addEls=[L1.P('pB'),L1.P('aB'),L1.P('nB')].filter(Boolean);
-  const qd2=quiz?yourTurn(solve?'add it':'take it back away','add',.6):null;
-  t+=GAP; beat(t,solve?'Add it to both sides':'Take it back away','add');
-  let landA=lit(L1.P('nA'),L1.P('nA'),L1.P('nB'),[L1.P('nB')],t,KX(vtex(n)));
-  fadeIn(L1.P('pB'),landA-.3,.3);
-  if(L1.P('aB')) landA=lit(L1.P('ca'),L1.P('ca'),L1.P('aB'),L1.P('aB'),landA+.15,KX(String(Math.abs(a))));
-  if(qd2!=null) QB(union(addEls),{t:qd2+.1,fill:landA,minW:44,padX:0});
-  t=landA+.6;
-  const kTex=solve?null:(Math.abs(a)!==1?`${vtex(p.c)} ${a>0?'-':'+'} ${Math.abs(a)}\\cdot ${vtex(n)}`:`${vtex(p.c)} ${a>0?'-':'+'} ${vtex(n)}`);
-  cap(t,solve?`Add ${N(n)} to both sides, so it stays balanced.`
-    :A1?`We added ${N(n)}, so take ${N(n)} back away. ${KX('f(x)')} stays the same.`
-    :a>0?`Inside ${KX(aTex+'(\\;)')}, the ${N(n)} is really ${KX(a+'\\cdot'+vtex(n))}. Take that back away.`
-    :`Inside ${KX(aTex+'(\\;)')}, adding ${N(n)} really took ${KX(Math.abs(a)===1?vtex(n):Math.abs(a)+'\\cdot'+vtex(n))} away. Add it back.`,
-    `Write ${perfect} as a perfect square. What goes in ${KX('(x\\;\\;\\;\\;)^2')}?`);
+  const perfect=KX(bxTex(B)+'+'+vtex(n));
+  let addEls, DX=0;
+  const rip0=solve?[]:[L1.P('rps'),L1.P('rpn')];
+  const shifted=b=>({...b,x:b.x-DX});
+  if(solve){
+    const addEls=[L1.P('pB'),L1.P('nB')].filter(Boolean);
+    const qd2=quiz?yourTurn(solve?'add it':'add it, take it away','add',.6):null;
+    t+=GAP; beat(t,solve?'Add it to both sides':'Add it and take it away','add');
+    // the + n lights once in the card; two chips leave together (James 2026-10-22: "add the +4 and the −4 at the same time")
+    const sb0=union(e0Els), LANDA=t+MT.fly.LEAD+.9;
+    const m0=MT.fly.mark(TL,card,{box:inCard(sb0),el:C$('e0'),t,land:LANDA}); marks.push(m0);
+    [L1.P('nA'),L1.P('nB')].forEach((dst,i)=>{ const fl=MT.fly(TL,stage,{html:KX(vtex(n)),cls:'litchip',from:mid(sb0),to:mid(box(dst)),t:t+MT.fly.LEAD,d:.9,lift:i?120:70}); fl.style.fontSize=FS+'px';
+      TL.at(LANDA,past=>S(dst,'opacity',past?1:0)); flash(dst,LANDA,1.4); });
+    fadeIn(L1.P('pB'),LANDA-.25,.3); fadeOut(blank,LANDA-.05,.25); fadeOut(miss,LANDA,.3);
+    TL.add(tIf+.2,LANDA-tIf-.2,q=>S(glow,'opacity',(.55+.35*Math.sin(q*Math.PI*2*Math.max(2,Math.round((LANDA-tIf)/1.2)))).toFixed(3)),E.lin);
+    if(pic&&pic.g2){ TL.at(LANDA,past=>pic.corner.classList.toggle('full',past)); fadeOut(pic.cq,LANDA,.2); fadeIn(pic.cn,LANDA+.05,.3); }
+    if(qd2!=null){ MT.quiz.box(TL,stage,box(blank),{t:qd2+.1,fill:LANDA,minW:44}); QB(union(addEls),{t:qd2+.2,fill:LANDA,minW:44,padX:0}); }
+    t=LANDA+.6;
+    if(solve) cap(t,`Add ${N(n)} to both sides at the same time, so it stays balanced.`,`Write ${perfect} as a perfect square.`);
+    else if(A1) cap(t,`Add ${N(n)} inside and take ${N(n)} away outside, at the same time: ${KX('f(x)')} stays the same.`,`Write ${perfect} as a perfect square.`);
+    else cap(t,`Add ${N(n)} inside and ${a>0?'take':'put'} ${N(n)} ${a>0?'away':'back'} outside… but the ${N(n)} is inside ${KX(aTex+'(\\;)')}.`,`How much did we really add?`);
+  } else {
+    // James 2026-10-22: "Find perfect square -> add zero, changes nothing -> on the same line, pull the zero left and right,
+    // each half transforming into a positive and negative number. Then the 2 moves across the equation and meets the -4 on top
+    // of the parenthesis. The -4 pushes against the parenthesis as the 2 squeezes into it. Suddenly, the -8 breaks free and
+    // flies to the end of the equation."
+    const rip=[L1.P('rps'),L1.P('rpn')], rim=[L1.P('rms'),L1.P('rmn')], gap=union([...rip,...rim]), par=L1.P('rpar');
+    // add a zero (a separate "0" in the middle of the room, with the + in its place)
+    const zero=at('fly',KX('0'),0,0); zero.style.fontSize=FS+'px'; S(zero,'opacity',0);
+    const zc={x:(box(L1.P('rpn')).x+gap.x+gap.w)/2,y:gap.y+gap.h/2};
+    const zt=(x,k=1)=>`translate(${x.toFixed(1)}px,${zc.y.toFixed(1)}px) translate(-50%,-50%) scale(${k})`;
+    t+=GAP; beat(t,'Add a zero','add');
+    S(zero,'transform',zt(zc.x));
+    fadeIn(L1.P('rps'),t+.1,.3); TL.add(t+.2,.4,q=>{ S(zero,'opacity',q); S(zero,'transform',zt(zc.x,1.3-.3*q)); },E.out);
+    hlOver(gap,t+.2,t+1,4);
+    t+=1.2;
+    cap(t,`Add ${KX('0')}: adding zero changes nothing.`,`How can a ${KX('0')} give us the ${KX('+'+vtex(n))}?`);
+
+    // pull the zero apart: each half slides out and becomes + n and − n
+    const qr=quiz?yourTurn('pull the 0 apart','add',.6,`${KX('0')} = ? − ?`):null;
+    const tb=t+GAP, t0=tb+MT.fly.LEAD+.1, dR=.9, landR=t0+dR;
+    if(qr!=null){ QB(box(L1.P('rpn')),{t:qr+.15,fill:landR,minW:40,padX:0}); QB(union(rim),{t:qr+.25,fill:landR,minW:44,padX:0}); }
+    t=tb; beat(t,'Pull the 0 apart','add');
+    marks.push(MT.fly.mark(TL,card,{box:inCard(union(e0Els)),el:C$('e0'),t,land:landR})); // the n comes from the card
+    TL.add(t0-.05,.05,q=>S(zero,'opacity',1-q)); // the whole 0 gives way to its two halves
+    [[L1.P('rpn'),'inset(0 50% 0 0)'],[union(rim),'inset(0 0 0 50%)']].forEach(([dst,clip],i)=>{
+      const db=dst.nodeType?box(dst):dst, e=hd('div','fly',stage,KX('0')); e.style.fontSize=FS+'px'; e.style.clipPath=clip; S(e,'opacity',0);
+      const x1=db.x+db.w/2;
+      TL.add(t0-.05,dR+.05,q=>{ const x=lerp(zc.x,x1,q), st=1+.35*Math.sin(q*Math.PI); S(e,'opacity',q<=0?0:q<.75?1:1-(q-.75)/.25);
+        S(e,'transform',`translate(${x.toFixed(1)}px,${zc.y.toFixed(1)}px) translate(-50%,-50%) scale(${st.toFixed(3)},${(2-st).toFixed(3)})`); },E.inOut);
+    });
+    [L1.P('rpn'),...rim].forEach(e=>fadeIn(e,landR-.25,.3)); flash([L1.P('rpn'),...rim],landR,1.4);
+    fadeOut(miss,landR,.3);
+    if(pic&&pic.g2){ TL.at(landR,past=>pic.corner.classList.toggle('full',past)); fadeOut(pic.cq,landR,.2); fadeIn(pic.cn,landR+.05,.3); }
+    t=landR+.6;
+    cap(t,`${KX('0')} = ${KX('+'+vtex(n)+'-'+vtex(n))}: still only zero. The ${KX('+'+vtex(n))} finishes the perfect square.`,
+      `The ${KX('-'+vtex(n))} doesn't belong inside. Where does it go?`);
+
+    // the − n goes to the top of the parenthesis; a comes across and squeezes in; the product breaks free to the end
+    addEls=[L1.P('pB'),L1.P('nB')];
+    const pb=box(par), rb=union(rim), top={x:pb.x+pb.w/2,y:pb.y-FS*.15};
+    const dx=pb.x-rb.x; DX=dx; // the room the − n leaves behind: the parenthesis and the rest close it up
+    const shiftEls=[par,...pc(L1,'c0'),...addEls], endB=union(addEls), endTo={x:endB.x+endB.w/2-dx,y:endB.y+endB.h/2};
+    const squeeze=aa!==1||a<0;
+    const qo=quiz?yourTurn('pull it outside','add',.6):null;
+    const tb2=t+GAP, tUp=tb2+.5, tMeet=tUp+.8, tSq=tMeet+(squeeze?.1:0), tBreak=tSq+(squeeze?.9:.1), landO=tBreak+.9;
+    if(qo!=null) QB({...endB,x:endB.x-dx},{t:qo+.15,fill:landO,minW:60,padX:0});
+    t=tb2; beat(t,a>0?'Pull the − '+n.txt()+' out':'Pull it out','add');
+    hlOver(rb,t,t+.5,5);
+    // 1. the real − n rises onto the parenthesis
+    const rc=mid(rb), up={x:top.x-rc.x,y:top.y-rc.y};
+    rim.forEach(e=>TL.add(tUp,tMeet-tUp,q=>S(e,'transform',`translate(${(up.x*q).toFixed(1)}px,${(up.y*q-Math.sin(q*Math.PI)*12).toFixed(1)}px)`),E.inOut));
+    if(squeeze){
+      // 2. a comes across the equation and meets it there
+      const caEl=L1.P('ca'), cb=box(caEl), meet={x:top.x-rb.w*.55-FS*.25,y:top.y};
+      marks.push(MT.fly.mark(TL,stage,{box:cb,el:caEl,t:tUp-MT.fly.LEAD,land:tMeet}));
+      const ac=hd('div','fly litchip',stage,KX(String(a))); ac.style.fontSize=FS+'px'; S(ac,'opacity',0);
+      const ca0=mid(cb), cc={x:(ca0.x+meet.x)/2,y:Math.min(ca0.y,meet.y)-FS*.25};
+      TL.add(tUp,tMeet-tUp,q=>{ const p0=MT.util.bez(ca0,cc,meet,q); S(ac,'opacity',q>0?1:0); S(ac,'transform',`translate(${p0.x.toFixed(1)}px,${p0.y.toFixed(1)}px) translate(-50%,-50%)`); },E.inOut);
+      // 3. the − n pushes against the parenthesis as a squeezes into it
+      TL.add(tSq,tBreak-tSq,q=>{ const w=Math.sin(q*Math.PI*3)*Math.min(1,q*2); // a few pushes, building up
+        const k=1-.22*Math.abs(w)-.1*q;
+        S(ac,'transform',`translate(${(meet.x+rb.w*.25*q).toFixed(1)}px,${meet.y.toFixed(1)}px) translate(-50%,-50%) scale(${(k*(1-.35*q)).toFixed(3)},${(1+.15*q).toFixed(3)})`);
+        rim.forEach(e=>S(e,'transform',`translate(${(up.x+6*Math.abs(w)).toFixed(1)}px,${up.y.toFixed(1)}px) scale(${k.toFixed(3)},${(2-k).toFixed(3)})`));
+        S(par,'transform',`scale(${(1+.12*Math.abs(w)).toFixed(3)},${(1-.06*Math.abs(w)).toFixed(3)})`); },E.lin);
+      TL.at(tBreak,past=>S(ac,'visibility',past?'hidden':'visible'));
+      const dot=hd('div','fly mdot',stage,KX('\\cdot')); dot.style.fontSize=(FS*1.2)+'px'; S(dot,'opacity',0);
+      TL.add(tMeet-.15,tBreak-tMeet+.15,q=>{ const qq=Math.max(0,(q*(tBreak-tMeet+.15)-.15)/(tBreak-tMeet)), x=meet.x+FS*.55+rb.w*.12*qq;
+        S(dot,'opacity',q>0?Math.min(1,q*4):0); S(dot,'transform',`translate(${x.toFixed(1)}px,${meet.y.toFixed(1)}px) translate(-50%,-50%)`); },E.lin);
+      TL.at(tBreak,past=>S(dot,'visibility',past?'hidden':'visible'));
+    }
+    // 4. it breaks free: the product flies to the end of the line, and the parenthesis and the rest close up the room
+    rim.forEach(e=>TL.at(tBreak,past=>S(e,'visibility',past?'hidden':'visible')));
+    const fr=hd('div','fly litchip',stage,KX(sgn+vtex(prod))); fr.style.fontSize=FS+'px'; S(fr,'opacity',0);
+    const fc={x:(top.x+endTo.x)/2,y:top.y-FS*1.1};
+    TL.add(tBreak,landO-tBreak,q=>{ const p0=MT.util.bez(top,fc,endTo,q), k=q<.15?1+2*q:1.3-.3*(q-.15)/.85;
+      S(fr,'opacity',q>0&&q<1?1:0); S(fr,'transform',`translate(${p0.x.toFixed(1)}px,${p0.y.toFixed(1)}px) translate(-50%,-50%) scale(${k.toFixed(3)})`); },E.out);
+    shiftEls.forEach(e=>TL.add(tBreak+.1,.6,q=>S(e,'translate',`${(-dx*q).toFixed(1)}px 0px`),E.inOut));
+    if(squeeze) TL.add(tBreak,.25,q=>S(par,'transform',`scale(${(1+.12*(1-q)).toFixed(3)},1)`),E.out);
+    addEls.forEach(e=>TL.at(landO,past=>S(e,'opacity',past?1:0))); flash(addEls,landO,1.4);
+    t=landO+.6;
+    if(A1) cap(t,`The ${KX('-'+vtex(n))} leaves the parentheses: ${KX('f(x)')} stays the same.`,`Write ${perfect} as a perfect square.`);
+    else if(a>0) cap(t,`Leaving ${KX(aTex+'(\\;)')}, the ${KX('-'+vtex(n))} gets multiplied by ${N(a)}: ${KX(a+'\\cdot'+paren(n.neg())+'='+vtex(n.mul(-a)))}.`,`Write ${perfect} as a perfect square.`);
+    else cap(t,`Leaving ${KX(aTex+'(\\;)')}, the ${KX('-'+vtex(n))} gets multiplied by ${N(a)}: ${KX(paren(a)+'\\cdot'+paren(n.neg())+'='+vtex(n.mul(-a)))}.`,`Write ${perfect} as a perfect square.`);
+  }
 
   // 5. write the perfect square
   const tSq=t+GAP; clearMarks(tSq);
   const hsEls=pc(L3,'hs'), krEls=pc(L3,'kr');
   const qq=quiz?yourTurn('the perfect square','square',.6):null;
   t+=GAP; beat(t,'Write the perfect square','square');
-  const leftSq=[L1.P('c2'),...pc(L1,'c1'),L1.P('pA'),L1.P('nA')];
+  const leftSq=solve?[L1.P('c2'),...pc(L1,'c1'),L1.P('pA'),L1.P('nA')]:[L1.P('c2'),...pc(L1,'c1'),...rip0];
   hlOver(union(leftSq),t,t+1.2,6);
-  const landH=lit(C$('ch'),C$('ch'),hsEls,hsEls,t+.5,KX(vtex(h)));
-  const rightEls=solve?[L1.P('cr'),L1.P('pB'),L1.P('nB')]:[...pc(L1,'c0'),...addEls];
-  const tk=landH+.2;
-  hlOver(union(rightEls),tk,tk+1.1,6);
-  if(qq!=null){ fadeIn(L3.el,qq,.4); QB(union(hsEls),{t:qq+.15,fill:landH,minW:44}); if(krEls.length) QB(union(krEls),{t:qq+.25,fill:tk+.7,minW:44}); }
+  const landH=lit(cpEls,C$('cp'),hsEls,hsEls,t+.5,KX(vtex(h)));
+  if(qq!=null){ fadeIn(L3.el,qq,.4); QB(union(hsEls),{t:qq+.15,fill:landH,minW:44}); }
   else fadeIn(L3.el,t+.3,.45,10);
-  krEls.forEach(e=>TL.at(tk+.7,past=>S(e,'opacity',past?1:0))); flash(krEls,tk+.7,1.4);
-  t=tk+1.4;
   const sqTex=(A1?'':aTex)+`\\left(x${term(h,0,false)}\\right)^2`;
-  if(solve) cap(t,`${perfect} = ${KX(sqTex)}, using the half: ${N(h)}. And ${KX(vtex(P.R)+'+'+vtex(n))} = ${N(P.K)}.`,
-    P.K.sign<0?'Can we take the square root of a negative?':'Square root both sides. What do we get?');
-  else { const dk=Math.abs(a)!==1?` = ${KX(vtex(p.c)+(P.adj.sign<0?'-':'+')+vtex(P.adj.abs()))}`:'';
-    cap(t,`${KX(bxTex(B)+'+'+vtex(n))} = ${KX(`\\left(x${term(h,0,false)}\\right)^2`)}, using the half: ${N(h)}. Outside: ${KX(kTex)}${dk} = ${N(P.k)}.`,'What is the vertex?'); }
+  if(!side){
+    const rightEls=solve?[L1.P('cr'),L1.P('pB'),L1.P('nB')]:[...pc(L1,'c0'),...addEls];
+    const tk=landH+.2;
+    hlOver(shifted(union(rightEls)),tk,tk+1.1,6);
+    if(qq!=null&&krEls.length) QB(union(krEls),{t:qq+.25,fill:tk+.7,minW:44});
+    krEls.forEach(e=>TL.at(tk+.7,past=>S(e,'opacity',past?1:0))); flash(krEls,tk+.7,1.4);
+    t=tk+1.4;
+    if(solve) cap(t,`${perfect} = ${KX(sqTex)}, from the card. And ${KX(vtex(P.R)+'+'+vtex(n))} = ${N(P.K)}.`,
+      P.K.sign<0?'Can we take the square root of a negative?':'Square root both sides. What do we get?');
+    else cap(t,`${perfect} = ${KX(`\\left(x${term(h,0,false)}\\right)^2`)}, from the card. Outside: ${KX((p.c?vtex(p.c):'')+sgn+vtex(prod))} = ${N(P.k)}.`,'What is the vertex?');
+  } else {
+    // a ≠ 1 (James 2026-10-22): work the outside out on its own row, one move per click, then send it up into the line
+    t=landH+.6;
+    cap(t,`${perfect} = ${KX(`\\left(x${term(h,0,false)}\\right)^2`)}, from the card. Now work out the outside.`,
+      mulStage?`What is ${KX(aa+'\\cdot'+vtex(n))}?`:`What is ${KX(vtex(p.c)+sgn+vtex(prod))}?`);
+    const W$=k=>LW.P(k), outEls=[...pc(L1,'c0'),...addEls];
+    const leftW=[W$('w3'),W$('wm'),W$('wa')].filter(Boolean), midW=[W$('x3'),W$('xm'),W$('x8')].filter(Boolean);
+    [...midW,W$('eq'),W$('eq2'),W$('wk')].filter(Boolean).forEach(e=>S(e,'opacity',0));
+    let srcK=leftW, shown=false;
+    if(mulStage){
+      const qm=quiz?yourTurn('multiply','square',.6):null, tb=t+GAP;
+      if(qm!=null){ fadeIn(LW.el,qm,.4); shown=true; QB(box(W$('x8')),{t:qm+.15,fill:tb+1.6,minW:44}); }
+      t=tb; beat(t,`Multiply ${aa} · ${n.txt()}`,'square');
+      hlOver(union(outEls),t,t+.8,6); if(!shown) fadeIn(LW.el,t+.3,.45,10); shown=true;
+      hlOver(box(W$('wa')),t+.9,t+1.8,5);
+      [W$('eq'),W$('x3'),W$('xm')].filter(Boolean).forEach(e=>fadeIn(e,t+1.4,.3)); fadeIn(W$('x8'),t+1.6,.35,-8); flash(W$('x8'),t+1.6,1.4);
+      t+=2.2; srcK=midW;
+      cap(t,`${KX(aa+'\\cdot'+vtex(n))} = ${N(prod)}.`,addStage?`What is ${KX(vtex(p.c)+sgn+vtex(prod))}?`:`So the outside is ${N(P.k)}.`);
+    }
+    if(addStage){
+      const qk=quiz?yourTurn('add','square',.6):null, tb=t+GAP, t0=mulStage?tb:tb+.9, eqK=mulStage?W$('eq2'):W$('eq');
+      if(qk!=null){ if(!shown) fadeIn(LW.el,qk,.4); shown=true; QB(box(W$('wk')),{t:qk+.15,fill:t0+.7,minW:44}); }
+      t=tb; beat(t,`${p.c} ${sgn==='-'?'−':'+'} ${prod.txt()}`,'square');
+      if(!mulStage){ hlOver(shifted(union(outEls)),t,t+.8,6); if(!shown) fadeIn(LW.el,t+.3,.45,10); shown=true; }
+      hlOver(union(srcK),t0,t0+.9,5); fadeIn(eqK,t0+.5,.3); fadeIn(W$('wk'),t0+.7,.35,-8); flash(W$('wk'),t0+.7,1.4);
+      t=t0+1.3; srcK=[W$('wk')];
+      cap(t,`${KX(vtex(p.c)+sgn+vtex(prod))} = ${N(P.k)}.`,'Where does it go?');
+    }
+    // the outside number goes up into the line
+    let landK=t;
+    if(krEls.length){ t+=GAP; beat(t,'Up into the line','square'); const pop=srcK[srcK.length-1]; landK=lit(srcK,pop,krEls,krEls,t,KX(vtex(P.k)));
+      if(qq!=null) QB(union(krEls),{t:qq+.25,fill:landK,minW:44}); }
+    t=landK+.6;
+    cap(t,`The outside is ${N(P.k)}: ${KX('f(x)='+sqTex+term(P.k,0,false))}.`,'What is the vertex?');
+  }
 
   if(solve){
     // 6. square root both sides (don't forget ±)
@@ -1038,7 +1240,7 @@ function build(p){
 // ---- the step list doubles as chapter buttons: a click jumps to just before that step, with its question on screen
 const lis=[...document.querySelectorAll('#stages li')];
 const WORDS={solve:{a:'Check for <em>a</em>: if it isn’t 1, divide everything by <em>a</em>',move:'Move <em>c</em> away',add:'Add it to both sides'},
-  vertex:{a:'Check for <em>a</em>: if it isn’t 1, factor it out of the <em>x</em> terms',move:'Move <em>c</em> out of the way',add:'Add it, then take it back away'}};
+  vertex:{a:'Check for <em>a</em>: if it isn’t 1, factor it out of the <em>x</em> terms',move:'Move <em>c</em> out of the way',add:'Add a zero, pull it apart, pull the negative out'}};
 function jumpTo(step){ const j=stageAt.indexOf(step); if(j<0) return; const t=j===0?TL.beats[0].end:TL.beats[j-1].end; TL.seek(t); jumped={t:TL.time,step}; transport.sync(); }
 lis.forEach(li=>{ li.tabIndex=0; li.setAttribute('role','button'); li.title='Jump to this step';
   li.addEventListener('click',()=>jumpTo(li.dataset.stage));
@@ -1061,7 +1263,7 @@ function show(src){
   let k=0; lis.forEach(li=>{ li.hidden=!steps.has(li.dataset.stage); if(!li.hidden) li.querySelector('b').textContent=++k; });
   document.querySelectorAll('.formcard .chip').forEach(c=>c.setAttribute('aria-pressed',String(c.textContent===txt)));
   TL.seek(TL.beats[0].end); transport.sync();
-  try{ localStorage.setItem('mt-square-eq',txt); }catch(e){}
+  try{ localStorage.setItem('mt-square-problem',txt); }catch(e){}
   return true;
 }
 for(const [m,list] of Object.entries(PRESETS)) for(const s of list){
@@ -1073,7 +1275,8 @@ const picBox=$('pic'); picBox.checked=picOn;
 picBox.addEventListener('change',()=>{ picOn=picBox.checked; try{ localStorage.setItem('mt-square-picture',picOn?'on':'off'); }catch(e){} if(current) show(CS.text(current)); });
 MT.quiz.bind($('quiz'),()=>{ if(current) show(CS.text(current)); });
 if(window.MT_TEST) window.__cs={TL,show,stage,get stageAt(){return stageAt;},PRESETS};
-fontsReady().then(()=>{ ST.fit(); let s=PRESETS.solve[0]; try{ s=localStorage.getItem('mt-square-eq')||s; }catch(e){} if(!show(s)) show(PRESETS.solve[0]); });
+// (the saved-problem key changed when vertex form became the default, 2026-10-22, so every browser opens on vertex form once)
+fontsReady().then(()=>{ ST.fit(); let s=PRESETS.vertex[0]; try{ s=localStorage.getItem('mt-square-problem')||s; }catch(e){} if(!show(s)) show(PRESETS.vertex[0]); });
 })();
 </script>
 
