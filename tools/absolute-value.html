@@ -1,5 +1,5 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
-<title>Absolute Value Equations</title>
+<title>Absolute Value</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap">
@@ -155,6 +155,10 @@ kbd{font-family:var(--mono);font-size:.78rem;border:1px solid var(--line);border
 .board .strike{position:absolute;z-index:3;height:6px;margin-top:-3px;border-radius:3px;background:var(--no);transform-origin:50% 50%;opacity:0;pointer-events:none}
 /* Show where it came from (lib/fly.js): a number substituted in flies in a yellow chip. Shadows only, so the line never shifts */
 .board .tk.litfly{background:var(--hl);border-radius:6px;box-shadow:0 0 0 7px var(--hl),0 4px 16px 6px rgba(15,20,45,.16)}
+/* inequalities (2026-10-23): the tag over a sign that flips, and a row drawn by its own part (a number line) */
+.board .fliptag{position:absolute;z-index:2;transform:translate(-50%,-100%);white-space:nowrap;font:700 17px var(--display);color:var(--ink);
+  background:var(--hl);border-radius:999px;padding:2px 12px;pointer-events:none;opacity:0}
+.board .cell.draw{display:block;position:relative;justify-self:center;align-self:start}
 </style>
 <style>
 /* "Show where it came from" (lib/fly.js MT.fly.lit / MT.fly.mark): the source's yellow light, which settles into an
@@ -163,7 +167,7 @@ kbd{font-family:var(--mono);font-size:.78rem;border:1px solid var(--line);border
 .litchip{background:var(--hl);border-radius:10px;padding:3px 10px;box-shadow:0 3px 12px rgba(15,20,45,.18)}
 </style>
 <style>
-/* Absolute Value Equations: problem chips and the three-step tracker */
+/* Absolute Value: the preset rows (one per kind), the step tracker, and switches and legend entries that belong to one kind */
 .stages{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
 .stages li{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:12px;border:1px solid var(--line);color:var(--muted);transition:background .3s,color .3s,border-color .3s}
 .stages b{flex:none;display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--bg);border:1px solid var(--line);font-weight:700;color:var(--muted);transition:background .3s,color .3s}
@@ -177,27 +181,65 @@ kbd{font-family:var(--mono);font-size:.78rem;border:1px solid var(--line);border
 body.gifts .stages .xmas{display:inline-block}
 .toggle{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:.92rem;color:var(--muted);cursor:pointer;width:max-content}
 .toggle input{width:18px;height:18px;accent-color:var(--gift);margin:0}
+/* one row of chips per kind of problem */
+.rows{display:flex;flex-direction:column;gap:8px}
+.rows .chips>span{min-width:6.5em}
+.trickt,.legend .k-x,.legend .k-ineq{display:none}
+body[data-kind="ineq"] .trickt{display:flex}
+body[data-kind="x"] .legend .k-x,body[data-kind="ineq"] .legend .k-ineq{display:flex}
+</style>
+<style>
+/* Absolute Value, inequalities: the number-line row (andor.js) and the great-OR / less th-AND card */
+.board .nl{position:absolute;left:0;top:0;overflow:visible}
+.board .nl-axis{stroke:var(--axis);stroke-width:4;stroke-linecap:round}
+.board .nl-head{fill:var(--axis)}
+.board .nl-tick{stroke:var(--axis);stroke-width:3}
+.board .nl-tick.end{stroke:var(--ink);stroke-width:4}
+.board .nl-num{font:500 24px var(--display);fill:var(--muted)}
+.board .nl-num.end{font-weight:700;font-size:28px;fill:var(--ink)}
+.board .nl-rline{stroke-width:8;stroke-linecap:round}
+.board .nl-ray .nl-rline{stroke:var(--curve);stroke-width:7} .board .nl-ray .nl-rhead,.board .nl-ray .nl-dot{fill:var(--curve);stroke:var(--curve)}
+.board .nl-res .nl-rline{stroke:var(--res)} .board .nl-res .nl-rhead,.board .nl-res .nl-dot{fill:var(--res);stroke:var(--res)}
+.board .nl-dot{stroke-width:4}
+.board .nl-dot.open{fill:var(--panel)!important}
+.board .nl-bandr{fill:var(--hl);opacity:0}
+.board .nl-band{opacity:.75}
+.board .nl-bandr.gap{fill:none;stroke:var(--muted);stroke-width:3;stroke-dasharray:10 8}
+.board .nl-bandt{font:700 22px var(--display);fill:var(--ink);letter-spacing:.04em}
+.board .nl-lab{position:absolute;white-space:nowrap}
+.board .nl-lab .math{font-size:34px}
+.board .nl-word{position:absolute;z-index:-1;border-radius:12px;background:var(--hl);opacity:0}
+.board .nl-ansbox{position:absolute;border:3px solid var(--res);border-radius:14px;opacity:0;pointer-events:none}
+.board .fly{position:absolute;left:0;top:0;z-index:6;pointer-events:none;white-space:nowrap;font-size:30px;color:var(--ink)}
+.board .trick{position:absolute;z-index:4;display:flex;flex-direction:column;gap:4px;padding:8px 14px;font:400 21px/1.25 var(--display);color:var(--ink);
+  background:var(--panel);border:2px solid var(--accent);border-radius:12px;box-shadow:0 4px 14px rgba(0,0,0,.12);pointer-events:none;white-space:nowrap}
+.board .trick b{font-weight:800;letter-spacing:.02em}
+.board .trick .tg,.board .trick .tl{border-radius:8px;padding:1px 8px}
+.board .trick .on{background:var(--hl)}
+.board .trick .off{opacity:.4}
+.board .trick::before{content:"";position:absolute;width:10px;height:10px;background:var(--panel);border:2px solid var(--accent);border-width:0 0 2px 2px}
+.board .trick.right::before{left:-7px;top:calc(50% - 6px);transform:rotate(45deg)}
+.board .trick.left::before{right:-7px;top:calc(50% - 6px);transform:rotate(-135deg)}
+.board .trick.above::before{left:calc(50% - 6px);bottom:-7px;transform:rotate(-45deg)}
+.toggle.trickt input{accent-color:var(--accent)}
 </style>
 
 <div class="wrap">
   <header>
-    <h1>Absolute Value Equations</h1>
-    <p class="sub">Isolate the absolute value, split it into a positive and a negative equation, then solve both. Step through it like slides.</p>
+    <h1>Absolute Value</h1>
+    <p class="sub">Isolate the absolute value, split it open, solve both. An x outside the bars means checking every answer; an inequality ends with and or or, on a number line. Step through it like slides.</p>
   </header>
 
   <form class="panel formcard" id="form" autocomplete="off" aria-label="Choose or build a problem">
     <div class="eqrow">
-      <input id="eq" class="mathinput" value="" placeholder="Type your own, like 3|x + 2| + 1 = 13" spellcheck="false" aria-label="Your own problem, like 3|x + 2| + 1 = 13" aria-describedby="err">
+      <input id="eq" class="mathinput" value="" placeholder="Type your own, like 3|x + 2| + 1 = 13 or |x − 3| < 5" spellcheck="false" aria-label="Your own problem: an equation like 3|x + 2| + 1 = 13 or an inequality like |x − 3| < 5 (type ≤ as <= and ≥ as >=)" aria-describedby="err">
       <button class="primary" type="submit">Build</button>
     </div>
     <p class="err" id="err" hidden></p>
-    <div class="chips" id="problems"><span>Problem</span></div>
-    <ol class="stages" id="stages">
-      <li data-stage="1"><b>1</b><span>Isolate the absolute value</span></li>
-      <li data-stage="2"><b>2</b><span>Split it into a positive and a negative equation <em class="xmas">Christmas morning</em></span></li>
-      <li data-stage="3"><b>3</b><span>Solve both equations</span></li>
-    </ol>
+    <div class="rows" id="problems" aria-label="Problems"></div>
+    <ol class="stages" id="stages"></ol>
     <label class="toggle"><input type="checkbox" id="gifts" checked> Christmas present reminders</label>
+    <label class="toggle trickt"><input type="checkbox" id="trick" checked> great-OR / less th-AND reminder</label>
   </form>
 
   <section class="panel boardcard" aria-label="Board">
@@ -222,8 +264,10 @@ body.gifts .stages .xmas{display:inline-block}
       <span><i style="background:var(--accent)"></i>x, the unknown</span>
       <span><i style="background:var(--hl)"></i>Being worked on</span>
       <span><i style="background:var(--res)"></i>Just worked out</span>
+      <span class="k-x"><i style="background:var(--no)"></i>Fails the check</span>
+      <span class="k-ineq"><i style="background:var(--curve)"></i>Each answer's graph</span>
     </div>
-    <p class="keys"><kbd>→</kbd> next step · <kbd>←</kbd> previous step · <kbd>Space</kbd> play or pause. Presentation clickers work too. Each step pauses after the move so the class can predict the next line.</p>
+    <p class="keys"><kbd>→</kbd> next step · <kbd>←</kbd> previous step · <kbd>Space</kbd> play or pause. Presentation clickers work too. Type ≤ as &lt;= and ≥ as &gt;=.</p>
   </section>
 </div>
 
@@ -744,6 +788,11 @@ MT.fly.lit=function(TL,parent,o){
    Reminders (all optional): wrap:true on a single line makes its absolute value a wrapped present, invisible until a note mentions it (then it flashes); unwrap:true on a
    split step opens the present before the split; note:'…' pops a small reminder next to the present (or the line; not on phones) at
    the end of that step (at the unwrap on an unwrap step) and tucks it away at the next step.
+   Inequalities (2026-10-23): a line's relation can be = < > ≤ ≥ (the columns line up on it). flip:true on a line (or a pair side)
+   turns its inequality around: the old sign glides down unchanged, then on its own beat ("Flip the inequality") it lights up and
+   mirrors into the new one, with a small tag (fliptag:'…', default "flip!") above it.
+   draw:{kind,…} is a row of its own drawn by a registered part, MT.Board.draws[kind](draw, ctx) → {w, h, setup(cell), play(t) → t}
+   (the inequality number line, tools/absolute-value/andor.js). ctx gives it the board, the rows, beats and words.
    In say, **bold** marks the action, $…$ is inline math, and words after || appear once the line is worked out. Every worked line gets the same treatment:
    the pieces that combine light up yellow, the result rises out of them in green, the rest glides down. */
 (function(MT){
@@ -752,6 +801,7 @@ const {hd,S,clamp,lerp,E,bez}=MT.util, T=MT.theme, X=MT.expr, M=MT.math;
 
 /* ---------- text to tagged TeX ---------- */
 let lexId=500000;
+const RELS=['=','<','>','≤','≥'];
 const SYM={'-':'-','−':'-','+':'+','*':'\\cdot','·':'\\cdot','×':'\\times','÷':'\\div','/':'/','=':'=','<':'<','>':'>','≤':'\\le','≥':'\\ge'};
 // a light lexer for lines the parser can't read (other letters, like y or a): every piece still gets a key, so it can still move
 function lexTex(s){
@@ -811,9 +861,9 @@ MT.Board=function({board,wrap,TL,transport,dim=.5,say:SAYW=420}){
     const line={cell:c,grid:g,parts,branch,math:[]};
     const put=(el,tex)=>{ if(tex==null) return; const host=chip?hd('span','opchip',el):el, m=hd('div','math',host); M.render(m,tex); line.math.push(m); if(chip) (line.chips=line.chips||[]).push(host); };
     if(chip){ put(parts[0],opTex(eq)); put(parts[2],opTex(eq)); return line; }
-    const k=eq.indexOf('=');
+    const k=eq.search(/[=<>≤≥]/);
     put(parts[0],sideTex(k<0?eq:eq.slice(0,k)));
-    if(k>=0) put(parts[1],`\\mathrel{${X.K('k'+(++lexId),'=')}}`);
+    if(k>=0) put(parts[1],`\\mathrel{${X.K('k'+(++lexId),SYM[eq[k]])}}`);
     put(parts[2],k<0?null:sideTex(eq.slice(k+1)));
     return line;
   }
@@ -848,8 +898,13 @@ MT.Board=function({board,wrap,TL,transport,dim=.5,say:SAYW=420}){
       const pair=st.pair||null;
       const opsHere=pair?pair.map((p,b)=>p&&p.op&&p.op.trim()?[p.op,b]:null).filter(Boolean):(st.op&&st.op.trim()&&i>0?[[st.op,null]]:[]);
       if(opsHere.length){ for(const [op,b] of opsHere){ const l=eqLine(cell('op',r,COL(b)),op,{chip:true,branch:b}); row.ops.push(l); } r++; }
-      if(pair) pair.forEach((p,b)=>{ if(!p) return; const l=eqLine(cell('eq',r,COL(b)),p.eq||'',{branch:b}); l.answer=!!p.answer; l.mark=p.mark; l.reject=!!p.reject; row.lines.push(l); });
-      else { const l=eqLine(cell('eq',r,COL(null)),st.eq||''); l.answer=!!st.answer; l.wrap=!!st.wrap; row.lines.push(l); }
+      if(st.draw){ const D=MT.Board.draws&&MT.Board.draws[st.draw.kind];
+        if(!D) throw new Error('board: no draw part "'+st.draw.kind+'"');
+        const c=cell('draw',r,COL(null)); row.drawCell=c; row.extra.push(c);
+        row.draw=D(st.draw,{narrow,board,TL,get rows(){return rows;},row,i});
+        c.style.width=row.draw.w+'px'; c.style.height=row.draw.h+'px'; }
+      else if(pair) pair.forEach((p,b)=>{ if(!p) return; const l=eqLine(cell('eq',r,COL(b)),p.eq||'',{branch:b}); l.answer=!!p.answer; l.mark=p.mark; l.reject=!!p.reject; l.flip=!!p.flip; l.fliptag=p.fliptag||st.fliptag; row.lines.push(l); });
+      else { const l=eqLine(cell('eq',r,COL(null)),st.eq||''); l.answer=!!st.answer; l.wrap=!!st.wrap; l.flip=!!st.flip; l.fliptag=st.fliptag; row.lines.push(l); }
       for(const l of row.lines) if(l.answer) l.cell.classList.add('answer');
       row.eqR=r; r++;
       if(pair){ const v=hd('div','vseg',board); v.style.gridColumn='3'; v.style.gridRow=`${row.hrule?r0+1:r0} / ${r}`; row.vsegs.push(v);
@@ -862,6 +917,7 @@ MT.Board=function({board,wrap,TL,transport,dim=.5,say:SAYW=420}){
         row.wordsB=pair.map(p=>p&&p.say?sayHTML(hd('div','sayb',say),p.say):[]); row.wordsB[0]=[...head,...row.wordsB[0]]; row.words=row.wordsB.flat();
         if(after) row.after=sayHTML(hd('div','sayb',say),after);
       } else { const [before,after]=(st.say||'').split(/\s*\|\|\s*/); row.words=sayHTML(say,before||''); if(after){ say.append(' '); const n=row.words.length; row.after=sayHTML(say,after).slice(n); } }
+      if(row.draw&&row.draw.setup) row.draw.setup(row.drawCell);
       rows.push(row);
     });
     if(!narrow){ divider=hd('div','divider',board); divider.style.gridRow=`1 / ${r}`; divider.style.gridColumn='6'; } else divider=null;
@@ -876,6 +932,7 @@ MT.Board=function({board,wrap,TL,transport,dim=.5,say:SAYW=420}){
     }
     // long math widens the page (the whole board then scales down together) instead of running into the words
     const span=Math.max(0,...all.map(l=>{ const b=l.cell.getBoundingClientRect(); return l.branch==null?b.width:0; }),
+      ...rows.filter(rw=>rw.drawCell).map(rw=>rw.drawCell.getBoundingClientRect().width),
       ...rows.filter(rw=>rw.step.pair).map(rw=>{ const bs=rw.lines.map(l=>l.cell.getBoundingClientRect()); return Math.max(...bs.map(b=>b.right))-Math.min(...bs.map(b=>b.left)); }));
     const need=span+(narrow?16:48+4+SAYW)+8;
     if(need>W){ W=Math.ceil(need); board.style.width=W+'px'; }
@@ -889,7 +946,7 @@ MT.Board=function({board,wrap,TL,transport,dim=.5,say:SAYW=420}){
         const box={x:b.left-o.left,y:b.top-o.top,w:b.width,h:b.height}; into.set('raw'+(++lexId),{key:'raw',els:[m],sp:m,box,cx:box.x+box.w/2,cy:box.y+box.h/2,text:m.textContent}); return; }
       for(const [k,it] of r.items){ into.set(k,it); if(it.text==='x'){ it.col='accent'; M.paint(it,T.rgb(T.COL.accent)); } } };
     const finish=l=>{ l.items=new Map(); for(const m of l.math) grab(m,l.items);
-      const its=[...l.items.values()]; const eq=its.find(t=>t.text==='=');
+      const its=[...l.items.values()]; const eq=its.find(t=>RELS.includes(t.text)); l.rel=eq||null;
       if(its.length){ const x0=Math.min(...its.map(t=>t.box.x)), x1=Math.max(...its.map(t=>t.box.x+t.box.w)), y0=Math.min(...its.map(t=>t.box.y)), y1=Math.max(...its.map(t=>t.box.y+t.box.h));
         l.box={x:x0,y:y0,w:x1-x0,h:y1-y0}; } else { const b=l.cell.getBoundingClientRect(); l.box={x:b.left-o.left,y:b.top-o.top,w:b.width,h:b.height}; }
       if(eq) l.eqX=eq.cx; else { const g=l.parts[1].getBoundingClientRect(); l.eqX=g.left+g.width/2-o.left; }
@@ -1053,6 +1110,16 @@ MT.Board=function({board,wrap,TL,transport,dim=.5,say:SAYW=420}){
       if(row.after) tEnd+=revealWords(row.after,tEnd)+.1;
       return tEnd;
     }
+    /* the inequality flips: it lights up, a small tag says why, and the real sign mirrors into the new one (James, 2026-10-23) */
+    function flipSigns(ls,t){
+      for(const l of ls){ const it=l.flipRel, b=it.box;
+        const h=hlBox(b,9); TL.add(t,.12,p=>S(h,'opacity',p),E.lin); TL.add(t+1.5,.4,p=>S(h,'opacity',1-p),E.lin);
+        const tag=hd('div','fliptag',board,l.fliptag||'flip!'); S(tag,'left',(b.x+b.w/2)+'px'); S(tag,'top',(b.y-12)+'px'); S(tag,'opacity',0);
+        shown.push(tag); TL.add(t,.12,p=>S(tag,'opacity',p),E.lin); // a reminder: it just appears
+        TL.at(t+.35,s=>M.paint(it,s?T.rgb(T.COL.res):M.colorOf(it))); pendingInk.push(it);
+        TL.add(t+.35,.8,p=>M.applyM(it,{sx:-Math.cos(Math.PI*p),k:1+.28*Math.sin(Math.PI*p)}),E.inOut); }
+      return t+.35+.8+.45;
+    }
     /* one step; b limits it to one branch (0 left, 1 right) when the branches are solved one at a time */
     function stepRow(row,i,t,b=null,opt={}){
       const st=row.step, mine=l=>b==null||l.branch===b;
@@ -1063,6 +1130,13 @@ MT.Board=function({board,wrap,TL,transport,dim=.5,say:SAYW=420}){
         if(i>=2) for(const el of [...rowEls(rows[i-2]),rows[i-2].say]) fadeEl(el,t,.5,1,dim);
         if(i>=1&&rows[i-1].say!==row.say) fadeEl(rows[i-1].say,t,.5,1,dim); }
       if(row.secrule&&!opt.relight){ grow(row.secrule,t,.7,'X'); t+=.6; }
+      if(row.draw){ // a row drawn by its own part (a number line): the words first, then its own beats
+        divTo(t+.1,row.bot,.8);
+        const wd=revealWords(row.words,t+.1);
+        return row.draw.play(t+.1,{wordsEnd:t+.1+wd,beat:(tt,name)=>beat(tt,name,i),reveal:revealWords,hlBox,union,fade:fadeEl,
+          words:text=>sayHTML(hd('div','sayb',row.say),text),settle:it=>pendingInk.push(it),
+          note:(el,tt)=>{ shown.push(el); TL.add(tt,.12,p=>S(el,'opacity',p),E.lin); }});
+      }
       if(i===0){
         for(const l of labels) fadeEl(l,t,.5,0,1);
         divTo(t+.1,row.bot,.8);
@@ -1093,6 +1167,9 @@ MT.Board=function({board,wrap,TL,transport,dim=.5,say:SAYW=420}){
       // which pieces combine, and where each new line comes from
       if(st.sub) return subIn(row,i,t1,lines);
       const plans=lines.map(l=>{ const src=sourceOf(i,l); const pairs=src?pairUp(src.items,l.items):new Map();
+        if(l.flip&&src&&l.rel&&src.rel){ // the inequality turns around: the old sign itself comes down, then mirrors
+          for(const [kb,ka] of [...pairs]) if(kb===l.rel.key||ka===src.rel.key) pairs.delete(kb);
+          pairs.set(l.rel.key,src.rel.key); l.flipRel=l.rel; }
         const used=new Set(pairs.values()), op=row.ops.find(o=>o.branch===l.branch);
         const side=(x,ref)=>x<ref?0:1;
         const groups=[0,1].map(sd=>{ const gone=src?[...src.items.values()].filter(a=>!used.has(a.key)&&side(a.cx,src.eqX)===sd):[];
@@ -1123,7 +1200,8 @@ MT.Board=function({board,wrap,TL,transport,dim=.5,say:SAYW=420}){
         const {l,src,pairs,groups}=pl;
         for(const [k,bb] of l.items){ const ka=pairs.get(k); if(!ka) continue;
           const a=src.items.get(ka), dx=a.cx-bb.cx, dy=a.cy-bb.cy, kk=a.box.h/Math.max(1,bb.box.h);
-          M.motion(TL,bb,tg,D,v=>({dx:dx*(1-v),dy:dy*(1-v),k:lerp(kk,1,v),op:v>0?1:0})); }
+          const sx=bb===l.flipRel?-1:1; // a sign about to flip arrives still pointing the old way
+          M.motion(TL,bb,tg,D,v=>({dx:dx*(1-v),dy:dy*(1-v),k:lerp(kk,1,v),sx,op:v>0?1:0})); }
         for(const g of groups){
           const from=[...g.gone.map(a=>a.box),...(g.chip?[g.chip]:[])];
           g.fresh.sort((a,c)=>a.cx-c.cx).forEach((bb,j)=>{
@@ -1144,6 +1222,8 @@ MT.Board=function({board,wrap,TL,transport,dim=.5,say:SAYW=420}){
         }
       }
       t=last+.3;
+      const flips=lines.filter(l=>l.flipRel);
+      if(flips.length){ beat(t,'Flip the inequality',i); t=flipSigns(flips,t); }
       for(const l of lines) if(l.answer) boxAnswer(l,t);
       if(lines.some(l=>l.answer)) t+=.8;
       lines.filter(l=>l.mark).forEach((l,j)=>markLine(l,t+j*.35));
@@ -1167,9 +1247,10 @@ MT.Board=function({board,wrap,TL,transport,dim=.5,say:SAYW=420}){
       const next=hd('span','',sc,'Next'), done=hd('span','',sc,'Already solved');
       const place=(r,p)=>{ S(sc,'left',r.x+'px'); S(sc,'top',r.y+'px'); S(sc,'width',r.w+'px'); S(sc,'height',r.h+'px'); };
       place(R); S(sc,'opacity',0);
+      const held=pre.length&&rows[pre[0]].lines.some(l=>l.flipRel); // a flip just happened: keep it in view until the next click
       TL.add(t,.6,p=>{ S(sc,'opacity',p); S(sc,'transform',`translateY(${((1-p)*-24).toFixed(1)}px)`); },E.out);
       TL.at(t,s=>{ S(next,'display',''); S(done,'display','none'); });
-      t+=.7;
+      if(!held) t+=.7; // (after a flip the screen comes with the next click, so the flip stays in view)
       const has=(i,b)=>[...rows[i].lines,...rows[i].ops].some(l=>l.branch===b);
       const lab=(i,b)=>{ const p=rows[i].step.pair[b]; if(p&&(p.label||p.say)) return p.label||plainLabel(p); // that side's own words name it
         return (b?'Right: ':'Left: ')+(rows[i].step.label||plainLabel(rows[i].step)); };
@@ -1380,8 +1461,8 @@ MT.solveLinear=solveLinear;
    step list the hand-written problems use, so any problem can go on the board (MT.Board) with James's method:
      1 isolate the absolute value (work around the present), 2 recopy and split it open on Christmas morning,
      3 solve both, one at a time (screened), and with outside:true, 4 check each answer in the original equation.
-   MT.solveAbs(src, {outside}) → {name, steps}. outside:false is the Absolute Value Equations tool (a number on the
-   other side); outside:true is the x Outside tool (flip ALL the signs on the negative side, then check).
+   MT.solveAbs(src, {outside}) → {name, steps, kind}. outside:false: a number on the other side (kind 'eq'); outside:true: an x
+   outside the bars (kind 'x': flip ALL the signs on the negative side, then check); outside:'auto' picks from the problem.
    Uses MT.expr to read the math and MT.solveLinear to solve each of the two equations. Exact fractions throughout.
    Throws an Error with a student-friendly message when it can't help. */
 (function(MT){
@@ -1506,7 +1587,7 @@ function solveAbs(src,opt={}){
   if(inner.some(t=>t.k==='a')||!inner.some(t=>t.k==='x')) throw new Error(NOTLIN);
   const U=sideStr(inner);
   let a=absT.c, ox=sum(LT,'x'), oc=sum(LT,'c'), qx=sum(RT,'x'), qc=sum(RT,'c');
-  if(!outside&&(!isZ(ox)||!isZ(qx))) throw new Error('This one has an x outside the bars. Open the "Absolute Value: x Outside" tool for it (it checks the answers too).');
+  if(!outside&&(!isZ(ox)||!isZ(qx))){ const e=new Error('This one has an x outside the bars, so it needs the x-outside method (it checks the answers too).'); e.xOutside=true; throw e; }
   // the left side keeps its reading order while terms leave it
   let left=tidy(LT.filter(t=>t.k!=='a').length?LT:[absT]);
   const rightOf=()=>[{k:'x',c:qx},{k:'c',c:qc}];
@@ -1541,12 +1622,12 @@ function solveAbs(src,opt={}){
   else steps[0].say=`${S1} It is already by itself, so this step is done.`;
 
   const iso=now(), rhs=sideStr(rightOf());
-  const copy={eq:iso,stage:2,copy:true,wrap:true,label:'Recopy the equation',say:`${S2} Recopy the equation.`};
+  const copy={eq:iso,stage:2,copy:true,wrap:true,label:'Step 2: Split it open',say:S2};
   const nameOf=raw.replace(/\s+/g,' ').replace(/-/g,'−');
 
   // a number on the right that is negative: nothing to split
   if(isZ(qx)&&qc.n<0){
-    steps.push({...copy,say:'**Step 2: Stop and look.** Recopy the equation.'});
+    steps.push({...copy,label:'Step 2: Stop and look',say:'**Step 2: Stop and look.**'});
     steps.push({eq:'\\text{No solution}',stage:2,note:'This present stays wrapped. It can never equal a negative.',label:'No solution',
       say:`An absolute value is a distance from 0, so it can never be $${texNum(qc)}$. There is nothing to split. **No solution.**`});
     return {name:nameOf,steps};
@@ -1631,25 +1712,471 @@ function solveAbs(src,opt={}){
   steps.push({stage:4,label:bad.length?(good.length?'One fails':'Both fail'):(good.length>1?'Both check out':'It checks out'),pair:finals,say});
   return {name:nameOf,steps};
 }
-MT.solveAbs=solveAbs;
+MT.solveAbs=(src,opt={})=>{
+  if(opt.outside!=='auto') return {...solveAbs(src,opt),kind:opt.outside?'x':'eq'};
+  try{ return {...solveAbs(src,{outside:false}),kind:'eq'}; }
+  catch(e){ if(!e.xOutside) throw e; return {...solveAbs(src,{outside:true}),kind:'x'}; }
+};
 MT.solveAbs.bars=bars;
+// the exact-fraction and term helpers, shared with lib/solve-abs-ineq.js (2026-10-23)
+MT.solveAbs._={R,fromNum,add,neg,sub,mul,div,absR,isZ,isOne,eqR,numStr,texNum,opNum,terms,tidy,sum,termStr,sideStr,texOf,hasX,NOTLIN};
 })(window.MT);
 </script>
 <script>
-/* The chosen problems, written out step by step. stage = which of James's three steps a line belongs to
+/* Absolute value inequality step writer (lib/solve-abs-ineq.js, 2026-10-23). Turns "2|x + 1| − 3 ≥ 7" into board steps
+   (MT.Board) with James's absolute value method plus what is new for inequalities:
+     1 isolate the absolute value (work around the present; dividing by a negative flips the inequality),
+     2 recopy and split it open on Christmas morning: the positive side drops the bars, the negative side makes the number
+       negative AND flips the inequality (flip:true, its own beat),
+     3 solve both, one at a time (screened; dividing by a negative flips again),
+     4 And or or? A number-line row (draw kind 'andor', tools/absolute-value/andor.js): graph each answer, the
+       great-OR / less th-AND trick, the real reason (where the two graphs overlap), then the answer as a graph and an inequality.
+   MT.solveAbsIneq(src) → {name, steps}. Needs lib/solve-abs.js (its fraction and term helpers), lib/expr.js.
+   Throws an Error with a student-friendly message when it can't help. */
+(function(MT){
+'use strict';
+const X=MT.expr, H=MT.solveAbs._, bars=MT.solveAbs.bars;
+const {R,add,neg,sub,div,absR,isZ,isOne,numStr,texNum,opNum,terms,tidy,sum,termStr,sideStr,texOf,hasX,NOTLIN}=H;
+const FLIP={'<':'>','>':'<','≤':'≥','≥':'≤'};
+const TEX={'<':'<','>':'>','≤':'\\le','≥':'\\ge'};
+const less=r=>r==='<'||r==='≤', strict=r=>r==='<'||r==='>';
+const S1='**Step 1: Isolate the absolute value.**', S2='**Step 2: Split it open.**', S3='**Step 3: Solve both, one at a time.**',
+  S4='**Step 4: And or or?**';
+const GIFT='This is a present. Don\'t touch what\'s inside until Christmas morning (step 2).',
+  AROUND='Work around the present. The inside stays wrapped.', MORNING='Christmas morning! Now you can open it.';
+const NEGTAG='÷ negative: flip!';
+
+// one of the two inequalities: the inside (terms in reading order) REL a number, solved for x
+function branch(inner,rel,rhs){
+  let left=inner.map(t=>({...t})), moves=[];
+  const line=()=>`${sideStr(left)} ${rel} ${numStr(rhs)}`;
+  const k=sum(left,'c'), m=sum(left,'x');
+  if(!isZ(k)){ const pos=k.n>0, w=numStr(absR(k));
+    rhs=sub(rhs,k); left=left.filter(t=>t.k!=='c');
+    moves.push({eq:line(),op:(pos?'−':'+')+opNum(absR(k)),label:`${pos?'Subtract':'Add'} ${w} ${pos?'from':'to'} both sides`,
+      say:`**${pos?'Subtract':'Add'} ${w} ${pos?'from':'to'} both sides.**`}); }
+  if(!isOne(m)){
+    let op,label,say;
+    if(m.d===1){ op=`÷${opNum(m)}`; label=`Divide both sides by ${numStr(m)}`; say=m.n<0?`**Divide both sides by** $${m.n}$.`:`**Divide both sides by ${m.n}.**`; }
+    else { const r=div(R(1),m); op=`×${opNum(r)}`; label=`Multiply both sides by ${numStr(r)}`; say=`**Multiply both sides by** $${texNum(r)}$.`; }
+    const flip=m.n<0&&rel!=='='; if(flip){ rel=FLIP[rel]; say+=' Watch the inequality.'; }
+    rhs=div(rhs,m); left=[{k:'x',c:R(1)}];
+    moves.push({eq:line(),op,label,say,...(flip?{flip:true,fliptag:NEGTAG}:{})});
+  }
+  if(moves.length) moves[moves.length-1].answer=true;
+  return {moves,rel,v:rhs};
+}
+const ineqTex=(rel,v)=>`x ${TEX[rel]} ${texNum(v)}`;
+
+function solveAbsIneq(src){
+  let raw=(src||'').trim().replace(/<=|=</g,'≤').replace(/>=|=>/g,'≥');
+  if(!raw) throw new Error('Type an absolute value inequality, like |x − 3| < 5.');
+  const nrel=(raw.match(/[<>≤≥]/g)||[]).length;
+  if(!nrel) throw new Error('Type an inequality with <, >, ≤ or ≥, like |x − 3| < 5. (Type ≤ as <= and ≥ as >=.)');
+  if(nrel>1||raw.includes('=')) throw new Error('Use just one inequality sign, like |x − 3| < 5.');
+  if(((raw.match(/\|/g)||[]).length)%2) throw new Error('One of the absolute value bars | is missing.');
+  const r0=raw.match(/[<>≤≥]/)[0], at=raw.indexOf(r0);
+  const ls=bars(raw.slice(0,at)), rs=bars(raw.slice(at+1));
+  if(!ls.trim()||!rs.trim()) throw new Error('Put something on both sides of the inequality sign, like |x − 3| < 5.');
+  let A=X.parse(ls), B=X.parse(rs), rel=r0;
+  const countAbs=n=>{ let c=0; X.walk(n,m=>{ if(m.t==='fn'&&m.name==='abs'&&hasX(m.a)) c++; }); return c; };
+  const ca=countAbs(A), cb=countAbs(B);
+  if(ca+cb===0) throw new Error('Put an absolute value with x inside it in the problem, like |x − 3| < 5. Type the bars with the | key.');
+  if(ca+cb>1) throw new Error('Put just one absolute value in the problem. This tool splits one present at a time.');
+  const lineOf=n=>bars(X.txt(n)).replace(/abs\(\(([^()]*)\)\)/g,'abs($1)');
+  const steps=[], nameOf=raw.replace(/\s+/g,' ').replace(/-/g,'−');
+  steps.push({eq:`${lineOf(A)} ${rel} ${lineOf(B)}`,stage:1,wrap:true,note:GIFT,label:'The inequality',say:S1});
+  if(cb){ [A,B]=[B,A]; rel=FLIP[rel];
+    steps.push({eq:`${lineOf(A)} ${rel} ${lineOf(B)}`,stage:1,wrap:true,flip:true,fliptag:'turn it around',label:'Flip the sides',
+      say:'**Flip the sides** so the present is on the left. || The sign turns around with it, so it still opens toward the same side.'}); }
+
+  const LT=terms(A), RT=tidy(terms(B));
+  const absT=LT.find(t=>t.k==='a'), inner=tidy(terms(absT.u));
+  if(inner.some(t=>t.k==='a')||!inner.some(t=>t.k==='x')) throw new Error(NOTLIN);
+  const U=sideStr(inner);
+  let a=absT.c, oc=sum(LT,'c'), qc=sum(RT,'c');
+  if(!isZ(sum(LT,'x'))||!isZ(sum(RT,'x'))) throw new Error('With an inequality, keep x inside the bars: the other side should be just a number, like |x − 3| < 5.');
+  let left=tidy(LT.filter(t=>t.k!=='a').length?LT:[absT]);
+  const now=()=>`${sideStr(left,U)} ${rel} ${numStr(qc)}`;
+  if(!isZ(oc)){ const pos=oc.n>0, w=numStr(absR(oc));
+    left=left.filter(t=>t.k!=='c'); qc=sub(qc,oc);
+    steps.push({eq:now(),op:(pos?'−':'+')+opNum(absR(oc)),stage:1,wrap:true,note:AROUND,
+      label:`${pos?'Subtract':'Add'} ${w} ${pos?'from':'to'} both sides`,
+      say:`**${pos?'Subtract':'Add'} ${w} ${pos?'from':'to'} both sides** to undo ${pos?'adding':'subtracting'} ${w}.`}); }
+  if(!isOne(a)){
+    let say,label,op; const flip=a.n<0;
+    if(a.d===1){ label=`Divide both sides by ${numStr(a)}`; op=`÷${opNum(a)}`;
+      say=a.n===-1?'**Divide both sides by** $-1$ to undo the negative in front of the absolute value.'
+        :a.n<0?`**Divide both sides by** $${a.n}$ to undo multiplying the absolute value by $${a.n}$.`
+        :`**Divide both sides by ${a.n}** to undo multiplying the absolute value by ${a.n}.`; }
+    else { const k=div(R(1),a); label=`Multiply both sides by ${numStr(k)}`; op=`×${opNum(k)}`;
+      say=`**Multiply both sides by** $${texNum(k)}$, the reciprocal of $${texNum(a)}$, so the absolute value is left by itself.`; }
+    qc=div(qc,a); left=[{k:'a',c:R(1)}];
+    if(flip){ rel=FLIP[rel]; say+=' Watch the inequality.'; }
+    steps.push({eq:now(),op,stage:1,wrap:true,label,say:say+(flip?' || We divided by a negative, so the inequality **flips**.':''),...(flip?{flip:true,fliptag:NEGTAG}:{})});
+  }
+  const last=steps[steps.length-1];
+  if(steps.length>1&&last.stage===1) last.say+=last.say.includes('||')?' Now the present is by itself.':' || Now the present is by itself.';
+  else steps[0].say=`${S1} It is already by itself, so this step is done.`;
+
+  const c=qc, iso=now();
+  const copy={eq:iso,stage:2,copy:true,wrap:true,label:'Step 2: Split it open',say:S2};
+  const cT=texNum(c), result=(draw,say)=>steps.push({stage:4,label:'Graph the answer',say,draw:{kind:'andor',trick:true,...draw}});
+
+  // a negative number (or 0) on the right: an absolute value is never negative
+  if(c.n<0||(isZ(c)&&rel!=='≤'&&rel!=='>')){
+    steps.push({...copy,label:'Step 2: Stop and look',say:'**Step 2: Stop and look.**'});
+    if(less(rel)){
+      steps.push({eq:'\\text{No solution}',stage:2,note:'This present stays wrapped. It is never negative.',label:'No solution',
+        say:`An absolute value is a distance from 0, so it is never negative. It can never be less than ${isZ(c)?'$0$':'$'+cT+'$'}. **No solution.**`});
+      return {name:nameOf,steps};
+    }
+    steps.push({eq:'\\text{Every number works}',stage:2,note:'This present stays wrapped. It is never negative.',label:'Every number works',
+      say:`An absolute value is a distance from 0, so it is never negative. It is always ${rel==='≥'?'at least':'more than'} $${cT}$. **Every number works.**`});
+    result({mode:'all'},`${S4} Neither: every number works. Shade the whole number line.`);
+    return {name:nameOf,steps};
+  }
+  // ≤ 0: the inside can only be 0, one equation
+  if(isZ(c)&&rel==='≤'){
+    steps.push(copy);
+    const b=branch(inner,'=',R(0));
+    steps.push({eq:`${U} = 0`,stage:2,unwrap:true,note:MORNING,label:'Only one equation',answer:!b.moves.length,
+      say:'Christmas morning! An absolute value is never negative, so the only way to be $\\le 0$ is to **be 0**. That is **one equation**.'});
+    b.moves.forEach((m,i)=>steps.push({...m,stage:3,...(i?{}:{rule:false}),say:(i?'':S3.replace('both, one at a time','it')+' ')+m.say}));
+    result({mode:'point',v:b.v},`${S4} Neither: one number works. Graph it.`);
+    return {name:nameOf,steps};
+  }
+
+  // the split: positive side drops the bars, negative side makes the number negative and flips the sign
+  steps.push(copy);
+  const relN=FLIP[rel], eqP=`${U} ${rel} ${numStr(c)}`, eqN=`${U} ${relN} ${numStr(neg(c))}`;
+  const P=branch(inner,rel,c), N=branch(inner,relN,neg(c));
+  const far={'<':'less than','≤':'at most','>':'more than','≥':'at least'}[rel];
+  const meaning=isZ(c)?'The inside can be anything except $0$.':less(rel)?`The inside is ${far} ${numStr(c)} away from 0: between $${texNum(neg(c))}$ and $${cT}$.`
+    :`The inside is ${far} ${numStr(c)} away from 0: out past $${cT}$ or out past $${texNum(neg(c))}$.`;
+  steps.push({split:true,tee:false,unwrap:true,note:MORNING,stage:2,label:'Split into two inequalities',
+    pair:[{eq:eqP,answer:!P.moves.length},{eq:eqN,answer:!N.moves.length,flip:true,fliptag:'negative side: flip!'}],
+    say:`**Positive side:** drop the bars. **Negative side:** the number becomes $${isZ(c)?'-0 = 0':texNum(neg(c))}$ || and the inequality **flips**. ${meaning}`});
+
+  // step 3: both sides take the same moves, side by side behind the screen
+  const n=Math.max(P.moves.length,N.moves.length);
+  for(let i=0;i<n;i++){
+    const p=P.moves[i], q=N.moves[i];
+    const side=m=>({eq:m.eq,op:m.op,answer:!!m.answer,...(m.flip?{flip:true,fliptag:m.fliptag}:{})});
+    const row={stage:3,screen:true,label:p.label,pair:[side(p),side(q)],say:p.say};
+    if(i===0){ row.rule=false; row.say=`${S3} ${row.say}`; }
+    steps.push(row);
+  }
+  const ans=[{rel:P.rel,v:P.v},{rel:N.rel,v:N.v}];
+  const words=ans.map(a=>`$${ineqTex(a.rel,a.v)}$`).join(' and ');
+  if(n) steps[steps.length-1].say+=` || The answers: ${words}.`;
+  else steps[steps.length-1].say+=` || Both are already solved: ${words}.`;
+  result({mode:less(rel)?'and':'or',a:ans[0],b:ans[1],rel,c},`${S4} Graph each answer on the number line.`);
+  return {name:nameOf,steps};
+}
+MT.solveAbsIneq=src=>({...solveAbsIneq(src),kind:'ineq'});
+// any typed absolute value problem: an inequality sign → this writer, otherwise MT.solveAbs picks equation or x outside
+MT.solveAbsAny=src=>/[<>≤≥]/.test(src||'')?MT.solveAbsIneq(src):MT.solveAbs(src,{outside:'auto'});
+MT.solveAbsIneq.FLIP=FLIP; MT.solveAbsIneq.TEX=TEX;
+})(window.MT);
+</script>
+<script>
+/* Step 4 of an absolute value inequality (tools/absolute-value): "And or or?" — a number-line row on the board (MT.Board draw kind 'andor').
+   James (2026-10-23): "the answer should be written with both a numberline AND an inequality, drawing attention to an and or
+   or solution ... we say great-OR or less th-AND. Mention that trick when we get to determining whether its an and or or
+   solution, but also show them the real way of looking at the inequalities of the solution."
+   Beats (mode 'and' / 'or'):
+     Graph each answer   each boxed answer lights and flies to its spot over the number line (Show where it came from), then
+                         its ray draws on the line itself (one just above it, one just below, so both show): open dot for < >,
+                         closed for ≤ ≥, an arrow because it keeps going
+     And or or?          the sign of the isolated inequality lights; the great-OR / less th-AND card pops up (switchable)
+     Less th-AND / Great-OR   (trick on) the half that matches lights, and the word "and" / "or" appears where the answer goes
+     Why and? / Why or?  the real reason: x must make BOTH true, which only happens where the two graphs overlap (a yellow band);
+                         or the graphs never overlap, so each piece works on its own (a dashed gap)
+     Write the answer    the two rays themselves settle onto the line and turn green (James, 2026-10-23: "change them to green
+                         instead of drawing new ones"); for and each pulls back to the other's endpoint, leaving the overlap;
+                         the two answers slide down beside the word
+     One inequality      (and only) x > −2 reads backwards as −2 < x (its sign turns around), and the two join: −2 < x < 8
+   mode 'all' (every number) and 'point' (|…| ≤ 0) draw one beat: the whole line, or one dot. */
+(function(MT){
+'use strict';
+const {hd,sv,A,S,clamp,lerp,E}=MT.util, T=MT.theme, M=MT.math, K=MT.expr.K;
+const TEX={'<':'<','>':'>','≤':'\\le','≥':'\\ge'};
+const val=v=>v.n/v.d;
+const tNum=v=>v.d===1?String(v.n):`${v.n<0?'-':''}\\tfrac{${Math.abs(v.n)}}{${v.d}}`;
+const txtNum=v=>(v.d===1?String(v.n):`${v.n}/${v.d}`).replace('-','−');
+let uid=880000; const key=()=>'k'+(++uid);
+
+MT.Board.draws=MT.Board.draws||{};
+MT.Board.draws.andor=function(d,ctx){
+  const {board,TL}=ctx, narrow=ctx.narrow;
+  const two=d.mode==='and'||d.mode==='or';
+  const w=narrow?540:600, PADX=40;
+  let yM=96, yAns=196, h=250, OFF=9, stacked=false;
+  // the scale: every endpoint on the line with room around it
+  const ends=two?[val(d.a.v),val(d.b.v)]:d.mode==='point'?[val(d.v)]:[0];
+  const lo=Math.min(...ends), hi=Math.max(...ends), span=hi-lo;
+  let step=[1,2,5,10,20,25,50,100,200,500,1000].find(s=>span/s<=8)||1000;
+  let min=Math.floor(lo/step)*step-2*step, max=Math.ceil(hi/step)*step+2*step;
+  while((max-min)/step<8){ min-=step; max+=step; }
+  // wide numbers need wider gaps: take a bigger step until the labels fit
+  const STEPS=[1,2,5,10,20,25,50,100,200,500,1000,2000,5000];
+  const fits=()=>(w-2*PADX)/((max-min)/step)>=Math.max(String(Math.round(min)).length,String(Math.round(max)).length)*14+12;
+  while(!fits()&&STEPS.indexOf(step)<STEPS.length-1){ step=STEPS[STEPS.indexOf(step)+1];
+    min=Math.floor(lo/step)*step-2*step; max=Math.ceil(hi/step)*step+2*step; while((max-min)/step<8){ min-=step; max+=step; } }
+  const X=v=>PADX+(v-min)/(max-min)*(w-2*PADX);
+  // two answers: both rays sit on the number line itself (one just above it, one just below), labels over their endpoints;
+  // two labels too close together stack
+  if(two){ stacked=Math.abs(X(val(d.a.v))-X(val(d.b.v)))<150; yM=stacked?162:116; yAns=yM+104; h=yAns+46; }
+  let cell, svg, parts={};
+
+  function setup(c){
+    cell=c;
+    svg=sv('svg',{class:'nl',width:w,height:h,viewBox:`0 0 ${w} ${h}`},c);
+    const g=k=>sv('g',{class:'nl-'+k},svg);
+    parts.band=g('band'); parts.axis=g('axis'); parts.tracks=g('tracks'); parts.res=g('res');
+    // the number line: arrows both ways, a tick on every step, the endpoints labelled in bold
+    const ax=parts.axis, x0=PADX-26, x1=w-PADX+26;
+    parts.line=sv('line',{class:'nl-axis',x1:w/2,x2:w/2,y1:yM,y2:yM},ax);
+    parts.heads=[[x0,-1],[x1,1]].map(([x,dir])=>sv('path',{class:'nl-head',d:`M${x} ${yM} l${-dir*15} -9 l0 18 Z`},ax));
+    parts.ticks=[];
+    const endX=ends.map(X);
+    for(let v=min;v<=max+1e-9;v+=step){ const x=X(v), near=d.mode!=='all'&&endX.some(e=>Math.abs(e-x)<44&&Math.abs(e-x)>1e-6);
+      const tk=sv('line',{class:'nl-tick',x1:x,x2:x,y1:yM-9,y2:yM+9},ax);
+      const isEnd=endX.some(e=>Math.abs(e-x)<1e-6)&&d.mode!=='all';
+      const n=near||isEnd?null:sv('text',{class:'nl-num',x,y:yM+44,'text-anchor':'middle'},ax); if(n) n.textContent=String(v).replace('-','−');
+      parts.ticks.push({els:n?[tk,n]:[tk],x}); }
+    if(d.mode!=='all') parts.endLabs=[...new Set(ends)].map(v=>{ const vv=two?[d.a.v,d.b.v].find(q=>val(q)===v):d.v, x=X(v);
+      const tk=sv('line',{class:'nl-tick end',x1:x,x2:x,y1:yM-12,y2:yM+12},ax);
+      const n=sv('text',{class:'nl-num end',x,y:yM+46,'text-anchor':'middle'},ax); n.textContent=txtNum(vv); return [tk,n]; });
+    if(two){
+      // the two answers, each on its own track, with its label (real KaTeX pieces that later slide into the answer)
+      parts.rays=[d.a,d.b].map((q,j)=>ray(parts.tracks,q.v,q.rel,j?yM+OFF:yM-OFF,'nl-ray'));
+      const hiFirst=val(d.a.v)>val(d.b.v)?0:1; // when stacked, the one further right sits higher
+      parts.labs=[d.a,d.b].map((q,j)=>label(`${K(key(),'x')}\\mathrel{${K(key(),TEX[q.rel])}}${K(key(),tNum(q.v))}`,
+        clamp(X(val(q.v)),70,w-70),yM-50-(stacked&&j===hiFirst?48:0)));
+      // where the answer is written: smaller endpoint first, the word in the middle
+      const lt=q=>q.rel==='<'||q.rel==='≤', loFirst=val(d.a.v)<val(d.b.v)||(val(d.a.v)===val(d.b.v)&&lt(d.a))?[0,1]:[1,0];
+      parts.order=loFirst;
+      const word=d.mode==='and'?'and':'or';
+      const pieces=loFirst.map(j=>{ const q=j?d.b:d.a; return [K(key(),'x'),`\\mathrel{${K(key(),TEX[q.rel])}}`,K(key(),tNum(q.v))]; });
+      parts.ref1=label(`${pieces[0].join('')}\\quad${K(key(),`\\textbf{${word}}`)}\\quad${pieces[1].join('')}`,w/2,yAns,'ref');
+      if(d.mode==='and'){ const L=loFirst.map(j=>j?d.b:d.a), lr=L[0].rel==='>'?'<':'≤';
+        parts.ref2=label(`${K(key(),tNum(L[0].v))}\\mathrel{${K(key(),TEX[lr])}}${K(key(),'x')}\\mathrel{${K(key(),TEX[L[1].rel])}}${K(key(),tNum(L[1].v))}`,w/2,yAns,'ref'); }
+      parts.wordEl=[...parts.ref1.items.values()].sort((p,q)=>p.cx-q.cx)[3];
+    } else {
+      parts.ans=label(d.mode==='all'?`${K(key(),'\\text{All real numbers}')}`:`${K(key(),'x')}\\mathrel{${K(key(),'=')}}${K(key(),tNum(d.v))}`,w/2,yAns);
+    }
+  }
+  // a ray from v toward one end: dot (open for < >, closed for ≤ ≥), the line, an arrowhead
+  function ray(parent,v,rel,y,cls){
+    const x=X(val(v)), dir=rel==='<'||rel==='≤'?-1:1, end=dir<0?PADX-30:w-PADX+30;
+    const gg=sv('g',{class:cls},parent);
+    const ln=sv('line',{class:'nl-rline',x1:x,x2:x,y1:y,y2:y},gg);
+    const hd2=sv('path',{class:'nl-rhead',d:`M0 0 l${-dir*18} -11 l0 22 Z`},gg);
+    const dot=sv('circle',{class:'nl-dot'+(rel==='<'||rel==='>'?' open':''),cx:x,cy:y,r:10},gg);
+    return {g:gg,ln,hd:hd2,dot,x,end,y,dir};
+  }
+  function drawRay(r,t,dl=.55){
+    TL.add(t,.3,p=>{ A(r.dot,'r',10*E.back(p)); S(r.dot,'opacity',p>0?1:0); },E.lin);
+    TL.add(t+.15,dl,p=>{ const xe=lerp(r.x,r.end,p); A(r.ln,'x2',xe); S(r.ln,'opacity',p>0?1:0);
+      A(r.hd,'transform',`translate(${xe.toFixed(1)},${r.y})`); S(r.hd,'opacity',p>.15?1:0); },E.out);
+    return t+.15+dl;
+  }
+  // a line of KaTeX in the cell, every piece its own element, centered on (cx, cy)
+  function label(tex,cx,cy,cls){
+    const el=hd('div','nl-lab'+(cls?' '+cls:''),cell), m=hd('div','math',el); M.render(m,tex);
+    const bw=el.offsetWidth, bh=el.offsetHeight;
+    el.style.left=(cx-bw/2).toFixed(1)+'px'; el.style.top=(cy-bh/2).toFixed(1)+'px';
+    const r=M.measure(m,{origin:cell});
+    for(const it of r.items.values()) if(it.text==='x'){ it.col='accent'; M.paint(it,T.rgb(T.COL.accent)); }
+    return {el,items:r.items,box:{x:cx-bw/2,y:cy-bh/2,w:bw,h:bh}};
+  }
+  const sorted=L=>[...L.items.values()].sort((p,q)=>p.cx-q.cx);
+
+  function play(t,api){
+    const rows=ctx.rows, cb=cell.getBoundingClientRect(), ob=board.getBoundingClientRect();
+    const off={x:cb.left-ob.left,y:cb.top-ob.top};
+    // everything starts hidden
+    TL.add(t,.6,p=>{ const hw=(w/2-PADX+26)*p; A(parts.line,'x1',w/2-hw); A(parts.line,'x2',w/2+hw); S(parts.line,'opacity',p>0?1:0); },E.inOut);
+    parts.heads.forEach(hh=>TL.add(t+.5,.2,p=>S(hh,'opacity',p),E.lin));
+    parts.ticks.forEach(tk=>{ const dd=Math.abs(tk.x-w/2)/(w/2); for(const e of tk.els) TL.add(t+.1+dd*.45,.2,p=>S(e,'opacity',p),E.lin); });
+    (parts.endLabs||[]).forEach(es=>es.forEach(e=>S(e,'opacity',0)));
+    const showEnd=(i,tt)=>{ if(parts.endLabs&&parts.endLabs[i]) for(const e of parts.endLabs[i]) TL.add(tt,.25,p=>S(e,'opacity',p),E.lin); };
+    let cur=Math.max(t+.8,api.wordsEnd);
+    const allLabs=[parts.labs,parts.ans?[parts.ans]:[],[parts.ref1,parts.ref2].filter(Boolean)].flat().filter(Boolean);
+    for(const L of allLabs) for(const it of L.items.values()) TL.add(0,.01,()=>M.applyM(it,{op:0}),E.lin);
+
+    if(!two){ // every number, or one number
+      if(d.mode==='all'){
+        const gg=sv('g',{class:'nl-res'},parts.res), ln=sv('line',{class:'nl-rline',x1:w/2,x2:w/2,y1:yM,y2:yM},gg);
+        const heads=[[-1,PADX-30],[1,w-PADX+30]].map(([dir,x])=>sv('path',{class:'nl-rhead',d:`M0 0 l${-dir*18} -11 l0 22 Z`,transform:`translate(${x},${yM})`},gg));
+        TL.add(cur,.7,p=>{ const hw=(w/2-PADX+30)*p; A(ln,'x1',w/2-hw); A(ln,'x2',w/2+hw); S(ln,'opacity',p>0?1:0); },E.out);
+        heads.forEach(hh=>TL.add(cur+.6,.15,p=>S(hh,'opacity',p),E.lin)); cur+=.9;
+        for(const it of parts.ans.items.values()) M.motion(TL,it,cur,.5,v=>({op:v,dy:(1-v)*12}),0,1,E.out); cur+=.6;
+      } else {
+        const ansLine=[...rows].reverse().flatMap(r=>r.lines).find(l=>l.answer);
+        const lab=parts.ans, its=sorted(lab);
+        if(ansLine&&MT.fly){ const bx=ansLine.ansBox||ansLine.box, to={x:off.x+lab.box.x+lab.box.w/2,y:off.y+lab.box.y+lab.box.h/2};
+          const lit=MT.fly.lit(TL,board,{html:katex.renderToString(`x = ${tNum(d.v)}`),cls:'nlchip',box:bx,to,t:cur,d:.75});
+          for(const it of its) TL.at(lit.land,s=>M.applyM(it,{op:s?1:0})); cur=lit.land+.1; }
+        else { for(const it of its) TL.at(cur,s=>M.applyM(it,{op:s?1:0})); }
+        const r=ray(parts.res,d.v,'≤',yM,'nl-res'); A(r.ln,'x2',r.x); S(r.ln,'opacity',0); S(r.hd,'opacity',0);
+        TL.add(cur,.35,p=>{ A(r.dot,'r',10*E.back(p)); S(r.dot,'opacity',p>0?1:0); },E.lin); showEnd(0,cur); cur+=.5;
+      }
+      const ab=hd('div','nl-ansbox',cell), bb=parts.ans.box;
+      Object.assign(ab.style,{left:(bb.x-16)+'px',top:(bb.y-10)+'px',width:(bb.w+32)+'px',height:(bb.h+20)+'px'});
+      TL.add(cur,.5,p=>{ S(ab,'opacity',p); S(ab,'transform',`scale(${lerp(1.15,1,p).toFixed(3)})`); },E.back);
+      return cur+.7;
+    }
+
+    // ---------- 1 Graph each answer: each one lights on the board, flies over the number line, then its ray draws ----------
+    const ansLines=[0,1].map(b=>{ let f=null; for(const r of rows) for(const l of r.lines) if(l.answer&&l.branch===b) f=l; return f; });
+    const lits=[];
+    [0,1].forEach(j=>{
+      const L=parts.labs[j], its=sorted(L), q=j?d.b:d.a, src=ansLines[j];
+      const to={x:off.x+L.box.x+L.box.w/2,y:off.y+L.box.y+L.box.h/2};
+      let land=cur;
+      if(src&&MT.fly){ const lit=MT.fly.lit(TL,board,{html:katex.renderToString(`x ${TEX[q.rel]} ${tNum(q.v)}`),cls:'nlchip',box:src.ansBox||src.box,to,t:cur,d:.75});
+        lits.push(lit); land=lit.land; }
+      for(const it of its) TL.at(land,s=>M.applyM(it,{op:s?1:0}));
+      const r=parts.rays[j]; S(r.dot,'opacity',0); S(r.ln,'opacity',0); S(r.hd,'opacity',0);
+      const re=drawRay(r,land+.1); showEnd([...new Set(ends)].indexOf(val(q.v)),land+.1);
+      cur=re+.2;
+    });
+    cur+=.2;
+
+    // ---------- 2 And or or? ----------
+    const isoRow=rows.find(r=>r.step.copy), iso=isoRow&&isoRow.lines[0], rel=iso&&iso.rel;
+    const andMode=d.mode==='and', word=andMode?'and':'or';
+    api.beat(cur,'And or or?');
+    let relHl=null;
+    if(rel){ relHl=api.hlBox(rel.box,10); TL.add(cur,.12,p=>S(relHl,'opacity',p),E.lin);
+      for(const e of rel.els) TL.add(cur,.42,p=>S(e,'scale',String(1+.24*Math.sin(p*Math.PI))),E.lin); }
+    let card=null, halves=null;
+    if(d.trick){
+      card=hd('div','trick',board); halves=[hd('div','tg',card,'great-<b>OR</b>'),hd('div','tl',card,'less th-<b>AND</b>')];
+      S(card,'opacity',0);
+      const div=board.querySelector('.divider'), lim=div?div.getBoundingClientRect().left-ob.left-14:board.offsetWidth-8;
+      const cw=card.offsetWidth, ch=card.offsetHeight, lb=iso.box;
+      let x=lb.x+lb.w+28, y=lb.y+lb.h/2-ch/2, side='right';
+      if(x+cw>lim){ x=lb.x-28-cw; side='left'; }
+      if(x<8){ x=clamp(lb.x+lb.w/2-cw/2,8,lim-cw); y=lb.y-ch-20; side='above'; }
+      card.classList.add(side); S(card,'left',x+'px'); S(card,'top',y+'px');
+      TL.add(cur,.12,p=>S(card,'opacity',p),E.lin); // a reminder: it just appears
+    }
+    const wq=api.words(d.trick?'Look at the sign now that the present is by itself. Is it **and** or **or**?':'Is it **and** or **or**?');
+    cur+=.2; cur+=api.reveal(wq,cur);
+    cur+=.3;
+    // the word that joins the two answers, where the answer will be written
+    const showWord=tt=>{ const it=parts.wordEl; it.col=null;
+      const chip=hd('div','nl-word',cell), b=it.box; Object.assign(chip.style,{left:(b.x-12)+'px',top:(b.y-6)+'px',width:(b.w+24)+'px',height:(b.h+12)+'px'});
+      S(chip,'opacity',0); TL.add(tt,.5,p=>{ S(chip,'opacity',p); S(chip,'transform',`scale(${lerp(1.5,1,p).toFixed(3)})`); },E.back);
+      M.motion(TL,it,tt,.5,v=>({op:v>0?1:0,k:lerp(1.5,1,v)}),0,1,E.back); parts.wordChip=chip; return tt+.6; };
+
+    // ---------- 3 the trick ----------
+    if(d.trick){
+      api.beat(cur,andMode?'Less th-AND':'Great-OR');
+      const [on,off2]=andMode?[halves[1],halves[0]]:[halves[0],halves[1]];
+      TL.at(cur,s=>{ on.classList.toggle('on',s); off2.classList.toggle('off',s); });
+      const w3=api.words(andMode?`It is **less than**, so it's less th-**AND**.`:`It is **greater than**, so it's great-**OR**.`);
+      cur+=.15; cur=Math.max(cur+api.reveal(w3,cur),showWord(cur+.2))+.3;
+    }
+
+    // ---------- 4 the real reason: where the two graphs overlap ----------
+    api.beat(cur,andMode?'Why and?':'Why or?');
+    const xl=X(lo), xh=X(hi), bandTop=yM-26, bandBot=yM+26;
+    const band=sv('rect',{class:'nl-bandr'+(andMode?'':' gap'),x:xl,y:bandTop,width:Math.max(0,xh-xl),height:bandBot-bandTop,rx:10},parts.band);
+    S(band,'opacity',0);
+    TL.add(cur+.1,.4,p=>{ S(band,'opacity',p); A(band,'y',lerp(yM,bandTop,p)); A(band,'height',lerp(0,bandBot-bandTop,p)); },E.out);
+    const Lo=parts.order[0]?d.b:d.a, Hi=parts.order[1]?d.b:d.a;
+    const WORD={'<':'less than','≤':'at most','>':'greater than','≥':'at least'};
+    const why=andMode
+      ?`**Why and?** $x$ has to make **both** answers true at the same time. That only happens where the two graphs **overlap**.`
+      :`**Why or?** The two graphs **never overlap**: no number is ${WORD[Lo.rel]} $${tNum(Lo.v)}$ **and** ${WORD[Hi.rel]} $${tNum(Hi.v)}$. Each graph works **on its own**, so it's **or**.`;
+    const w4=api.words(why);
+    cur+=.15; let e4=cur+api.reveal(w4,cur);
+    if(!d.trick) e4=Math.max(e4,showWord(cur+.3));
+    cur=Math.max(e4,cur+.8)+.3;
+
+    // ---------- 5 Write the answer: shade it on the line, slide the two answers down beside the word ----------
+    api.beat(cur,'Write the answer');
+    for(const l of lits) l.clear(cur);
+    if(relHl) TL.add(cur,.3,p=>S(relHl,'opacity',1-p),E.lin);
+    TL.add(cur,.4,p=>S(band,'opacity',1-p),E.lin);
+    // the rays themselves become the answer: they settle onto the line and turn green;
+    // for and, each one also pulls back to the other's endpoint, so only the overlap is left
+    const C0=T.COL.curve, C1=T.COL.res;
+    parts.rays.forEach(r=>{ const far=andMode?(r.dir<0?xl:xh):r.end;
+      TL.add(cur+.2,.8,p=>{ const y=lerp(r.y,yM,p), xe=lerp(r.end,far,p), c=T.mix(C0,C1,p);
+        for(const e of [r.ln]) { A(e,'y1',y); A(e,'y2',y); A(e,'x2',xe); S(e,'stroke',c); }
+        A(r.dot,'cy',y); S(r.dot,'stroke',c); if(!r.dot.classList.contains('open')) S(r.dot,'fill',c);
+        S(r.hd,'fill',c); A(r.hd,'transform',`translate(${xe.toFixed(1)},${y.toFixed(1)})`); if(andMode) S(r.hd,'opacity',1-p); },E.inOut); });
+    const gEnd=cur+1.1;
+    const R1=sorted(parts.ref1), slots=[R1.slice(0,3),R1.slice(4,7)];
+    let mEnd=gEnd;
+    parts.order.forEach((j,k)=>{ const its=sorted(parts.labs[j]); its.forEach((it,n)=>{ const to=slots[k][n];
+      const dx=to.cx-it.cx, dy=to.cy-it.cy, t0=gEnd-.3+k*.25;
+      M.motion(TL,it,t0,.8,v=>({dx:dx*v,dy:dy*v-50*Math.sin(Math.PI*v),op:1})); mEnd=Math.max(mEnd,t0+.8); }); });
+    const ub=(L,its)=>{ const x0=Math.min(...its.map(i=>i.box.x)), x1=Math.max(...its.map(i=>i.box.x+i.box.w)), y0=Math.min(...its.map(i=>i.box.y)), y1=Math.max(...its.map(i=>i.box.y+i.box.h)); return {x:x0,y:y0,w:x1-x0,h:y1-y0}; };
+    const b1=ub(parts.ref1,R1), ab=hd('div','nl-ansbox',cell);
+    const setBox=(b,p)=>Object.assign(ab.style,{left:(b.x-18)+'px',top:(b.y-12)+'px',width:(b.w+36)+'px',height:(b.h+24)+'px'});
+    setBox(b1); S(ab,'opacity',0);
+    TL.add(mEnd+.1,.5,p=>{ S(ab,'opacity',p); S(ab,'transform',`scale(${lerp(1.12,1,p).toFixed(3)})`); },E.back);
+    const w5=api.words(andMode?'Shade where **both** are true, and write it with **and**.':'Shade **both** pieces, and write it with **or**.');
+    cur+=.15; cur=Math.max(cur+api.reveal(w5,cur),mEnd+.7)+.2;
+    if(!andMode) return cur;
+
+    // ---------- 6 One inequality: x > −2 reads backwards as −2 < x, then the two join ----------
+    api.beat(cur,'One inequality');
+    const R2=sorted(parts.ref2), [La,Lb]=parts.order.map(j=>sorted(parts.labs[j])); // La = x > lo, Lb = x < hi
+    const go=(it,to,t0,extra={})=>{ const fx=to.cx-it.cx, fy=to.cy-it.cy;
+      // where it sits now: its slot in the written answer
+      const slot=slots[La.includes(it)?0:1][(La.includes(it)?La:Lb).indexOf(it)], sx0=slot.cx-it.cx, sy0=slot.cy-it.cy;
+      M.motion(TL,it,t0,.9,v=>({dx:lerp(sx0,fx,v),dy:lerp(sy0,fy,v)-(extra.arc||0)*Math.sin(Math.PI*v),sx:extra.flip?Math.cos(Math.PI*v):1,
+        op:extra.fade?1-v:1,k:extra.flip?1+.25*Math.sin(Math.PI*v):1})); };
+    const t6=cur+.2;
+    // the left answer turns around: the number goes in front, the x behind, and the sign turns with it
+    go(La[2],R2[0],t6,{arc:60}); go(La[1],R2[1],t6,{flip:true}); go(La[0],R2[2],t6,{arc:-40});
+    const sb=slots[0][1].box, hl6=api.hlBox({x:sb.x+off.x,y:sb.y+off.y,w:sb.w,h:sb.h},9);
+    TL.add(t6,.12,p=>S(hl6,'opacity',p),E.lin); TL.add(t6+1.1,.4,p=>S(hl6,'opacity',1-p),E.lin);
+    TL.at(t6,v=>M.paint(La[1],v?T.rgb(T.COL.res):M.colorOf(La[1])));
+    // the word goes, the second x joins the first, and the rest closes up
+    const wi=parts.wordEl; M.motion(TL,wi,t6+.5,.4,v=>({op:1-v,k:1-.3*v}));
+    if(parts.wordChip) TL.add(t6+.5,.4,p=>S(parts.wordChip,'opacity',1-p),E.lin);
+    go(Lb[0],R2[2],t6+.5,{fade:true}); go(Lb[1],R2[3],t6+.5); go(Lb[2],R2[4],t6+.5);
+    const b2=ub(parts.ref2,R2);
+    TL.add(t6+.5,.9,p=>setBox({x:lerp(b1.x,b2.x,p),y:lerp(b1.y,b2.y,p),w:lerp(b1.w,b2.w,p),h:lerp(b1.h,b2.h,p)}),E.inOut);
+    const w6=api.words(`Read $x ${TEX[Lo.rel]} ${tNum(Lo.v)}$ backwards: the number goes first and the sign turns around. Then the two join into one: $${tNum(Lo.v)} ${TEX[Lo.rel==='>'?'<':'≤']} x ${TEX[Hi.rel]} ${tNum(Hi.v)}$.`);
+    const e6=api.reveal(w6,t6);
+    return Math.max(t6+1.6,t6+e6)+.2;
+  }
+  return {w,h,setup,play};
+};
+})(window.MT);
+</script>
+<script>
+/* Absolute Value: the preset problems, in three rows (kind = 'eq' a number on the other side, 'x' an x outside the bars,
+   'ineq' an inequality). The equation and x-outside problems are hand-written step by step (James approved these on the
+   board); the inequalities are written by MT.solveAbsIneq, the same writer the Build box uses.
+   Step format: brain-library-reference.md, "Board steps". */
+window.ABS_PROBLEMS={};
+
+/* Equations (kind eq). The chosen problems, written out step by step. stage = which of James's three steps a line belongs to
    (the board draws a black line across the problem between stages); screen:true solves the two equations one at a time.
    Step 2 starts by recopying the isolated equation below the black line, then a vertical line (no T) opens the two
    equations; step 3 carries on underneath them with no black line in between (James, 2026-10-06).
    James's memory trick: the absolute value is a Christmas present. wrap:true wraps it, unwrap:true opens it on
    Christmas morning (step 2), note:'…' is a small reminder pop-up. main.js strips these when reminders are off. */
+(()=>{
 const S1='**Step 1: Isolate the absolute value.**', S2='**Step 2: Split it open.**', S3='**Step 3: Solve both, one at a time.**';
 const GIFT='This is a present. Don\'t touch what\'s inside until Christmas morning (step 2).',
   AROUND='Work around the present. The inside stays wrapped.', MORNING='Christmas morning! Now you can open it.';
 // step 2 begins: recopy the isolated equation, then split it under a T
-const copy1=eq=>({eq,stage:2,copy:true,wrap:true,label:'Recopy the equation',say:`${S2} Recopy the equation.`});
+const copy1=eq=>({eq,stage:2,copy:true,wrap:true,label:'Step 2: Split it open',say:S2});
 const split=(a,b,c)=>({split:true,tee:false,unwrap:true,note:MORNING,stage:2,label:'Split into two equations',pair:[{eq:a},{eq:b}],
   say:`What is inside the bars is either $${c}$ or $-${c}$. Both are ${c} away from 0.`});
-window.ABS_PROBLEMS=[
+window.ABS_PROBLEMS.eq=[
  {name:'|x − 3| = 5', steps:[
   {eq:'abs(x − 3) = 5',stage:1,wrap:true,note:GIFT,label:'The equation',say:`${S1} It is already by itself, so this step is done.`},
   copy1('abs(x − 3) = 5'),
@@ -1684,12 +2211,89 @@ window.ABS_PROBLEMS=[
  {name:'|x + 4| + 6 = 2', steps:[
   {eq:'abs(x + 4) + 6 = 2',stage:1,wrap:true,note:GIFT,label:'The equation',say:S1},
   {eq:'abs(x + 4) = −4',op:'−6',stage:1,wrap:true,note:AROUND,label:'Subtract 6 from both sides',say:'Subtract 6 from both sides to undo adding 6.'},
-  {...copy1('abs(x + 4) = −4'),say:'**Step 2: Stop and look.** Recopy the equation.'},
+  {...copy1('abs(x + 4) = −4'),label:'Step 2: Stop and look',say:'**Step 2: Stop and look.**'},
   {eq:'\\text{No solution}',stage:2,note:'This present stays wrapped. It can never equal a negative.',label:'No solution',say:'An absolute value is a distance from 0, so it can never be $-4$. There is nothing to split. **No solution.**'}]}
 ];
+})();
+
+/* x outside the bars (kind x). Absolute value equations with an x outside the bars. Same board as the absolute-value tool (see its problems.js),
+   plus James's extra rules: on the negative side flip ALL the signs on the other side, then step 4 checks each answer
+   in the original equation (mark:'yes'|'no', reject:true crosses out an answer that fails). The two equations can take
+   different moves, so stage-3 rows give each side its own say; a side is null when the other needs an extra step. */
+(()=>{
+const S1='**Step 1: Isolate the absolute value.**', S2='**Step 2: Split it open.**', S3='**Step 3: Solve both, one at a time.**',
+  S4='**Step 4: Check each answer.** Start with the original equation.';
+const GIFT='This is a present. Don\'t touch what\'s inside until Christmas morning (step 2).',
+  AROUND='Work around the present. The inside stays wrapped.', MORNING='Christmas morning! Now you can open it.';
+const copy1=eq=>({eq,stage:2,copy:true,wrap:true,label:'Step 2: Split it open',say:S2});
+const split=(a,b,rhs,flip)=>({split:true,tee:false,unwrap:true,note:MORNING,stage:2,label:'Split into two equations',pair:[{eq:a},{eq:b}],
+  say:`**Negative side: flip ALL the signs** on the right: $${rhs}$ becomes $${flip}$.`});
+const L=(eq,op,say,x={})=>({eq,op,say:'**Positive:** '+say,...x}), R=(eq,op,say,x={})=>({eq,op,say:'**Negative:** '+say,...x});
+const s3=(pair,x={})=>({stage:3,screen:true,pair,...x});
+window.ABS_PROBLEMS.x=[
+ {name:'|2x − 1| = x + 4', steps:[
+  {eq:'abs(2x − 1) = x + 4',stage:1,wrap:true,note:GIFT,label:'The equation',say:`${S1} It is already by itself.`},
+  copy1('abs(2x − 1) = x + 4'),
+  split('2x − 1 = x + 4','2x − 1 = −x − 4','x + 4','-x - 4'),
+  s3([L('x − 1 = 4','−x','subtract $x$.'),R('3x − 1 = −4','+x','add $x$.')],{rule:false,say:S3}),
+  s3([{eq:'x = 5',op:'+1',answer:true},{eq:'3x = −3',op:'+1'}],{say:'Add 1 to both sides.'}),
+  s3([null,{eq:'x = −1',op:'÷3',answer:true}],{say:'Divide both sides by 3. || Now check both.'}),
+  {stage:4,from:0,label:'Start with the original equation',pair:[{eq:'abs(2x − 1) = x + 4'},{eq:'abs(2x − 1) = x + 4'}],say:S4},
+  {stage:4,over:true,sub:true,label:'Put each answer in for x',pair:[{eq:'abs(2(5) − 1) = 5 + 4'},{eq:'abs(2(−1) − 1) = −1 + 4'}],say:'Put each answer in for $x$.'},
+  {stage:4,label:'Simplify',pair:[{eq:'abs(9) = 9'},{eq:'abs(−3) = 3'}],say:'Simplify.'},
+  {stage:4,label:'Both check out',pair:[{eq:'9 = 9',mark:'yes'},{eq:'3 = 3',mark:'yes'}],say:'Both are true. || **So** $x = 5$ **or** $x = -1$.'}]},
+ {name:'|x + 3| = 2x', steps:[
+  {eq:'abs(x + 3) = 2x',stage:1,wrap:true,note:GIFT,label:'The equation',say:`${S1} It is already by itself.`},
+  copy1('abs(x + 3) = 2x'),
+  split('x + 3 = 2x','x + 3 = −2x','2x','-2x'),
+  s3([{eq:'3 = x',op:'−x'},{eq:'3 = −3x',op:'−x'}],{rule:false,say:S3+' Subtract $x$ from both sides.'}),
+  s3([L('x = 3',null,'write it as $x = 3$.',{answer:true}),R('−1 = x','÷(−3)','divide by $-3$.')]),
+  s3([null,{eq:'x = −1',answer:true}],{say:'Write it as $x = -1$. || Now check both.'}),
+  {stage:4,from:0,label:'Start with the original equation',pair:[{eq:'abs(x + 3) = 2x'},{eq:'abs(x + 3) = 2x'}],say:S4},
+  {stage:4,over:true,sub:true,label:'Put each answer in for x',pair:[{eq:'abs(3 + 3) = 2(3)'},{eq:'abs(−1 + 3) = 2(−1)'}],say:'Put each answer in for $x$.'},
+  {stage:4,label:'Simplify',pair:[{eq:'abs(6) = 6'},{eq:'abs(2) = −2'}],say:'Simplify.'},
+  {stage:4,label:'One fails',pair:[{eq:'6 = 6',mark:'yes'},{eq:'2 = −2',mark:'no',reject:true}],
+   say:'$x = -1$ fails: an absolute value is never negative. || **So the only solution is** $x = 3$.'}]},
+ {name:'2|x + 5| − 1 = 6x − 3', steps:[
+  {eq:'2abs(x + 5) − 1 = 6x − 3',stage:1,wrap:true,note:GIFT,label:'The equation',say:S1},
+  {eq:'2abs(x + 5) = 6x − 2',op:'+1',stage:1,wrap:true,note:AROUND,label:'Add 1 to both sides',say:'Add 1 to both sides.'},
+  {eq:'abs(x + 5) = 3x − 1',op:'÷2',stage:1,wrap:true,label:'Divide both sides by 2',say:'Divide both sides by 2, **every** term.'},
+  copy1('abs(x + 5) = 3x − 1'),
+  split('x + 5 = 3x − 1','x + 5 = −3x + 1','3x - 1','-3x + 1'),
+  s3([L('−2x + 5 = −1','−3x','subtract $3x$.'),R('4x + 5 = 1','+3x','add $3x$.')],{rule:false,say:S3}),
+  s3([{eq:'−2x = −6',op:'−5'},{eq:'4x = −4',op:'−5'}],{say:'Subtract 5 from both sides.'}),
+  s3([L('x = 3','÷(−2)','divide by $-2$.',{answer:true}),R('x = −1','÷4','divide by 4.',{answer:true})],{say:' || Now check both.'}),
+  {stage:4,from:0,label:'Start with the original equation',pair:[{eq:'2abs(x + 5) − 1 = 6x − 3'},{eq:'2abs(x + 5) − 1 = 6x − 3'}],say:S4},
+  {stage:4,over:true,sub:true,label:'Put each answer in for x',pair:[{eq:'2abs(3 + 5) − 1 = 6(3) − 3'},{eq:'2abs(−1 + 5) − 1 = 6(−1) − 3'}],say:'Put each answer in for $x$.'},
+  {stage:4,label:'Simplify',pair:[{eq:'2(8) − 1 = 18 − 3'},{eq:'2(4) − 1 = −6 − 3'}],say:'Simplify.'},
+  {stage:4,label:'One fails',pair:[{eq:'15 = 15',mark:'yes'},{eq:'7 = −9',mark:'no',reject:true}],
+   say:'$x = -1$ fails: $7$ is not $-9$. || **So the only solution is** $x = 3$.'}]},
+ {name:'|x − 2| = 3x + 6', steps:[
+  {eq:'abs(x − 2) = 3x + 6',stage:1,wrap:true,note:GIFT,label:'The equation',say:`${S1} It is already by itself.`},
+  copy1('abs(x − 2) = 3x + 6'),
+  split('x − 2 = 3x + 6','x − 2 = −3x − 6','3x + 6','-3x - 6'),
+  s3([L('−2x − 2 = 6','−3x','subtract $3x$.'),R('4x − 2 = −6','+3x','add $3x$.')],{rule:false,say:S3}),
+  s3([{eq:'−2x = 8',op:'+2'},{eq:'4x = −4',op:'+2'}],{say:'Add 2 to both sides.'}),
+  s3([L('x = −4','÷(−2)','divide by $-2$.',{answer:true}),R('x = −1','÷4','divide by 4.',{answer:true})],{say:' || Now check both.'}),
+  {stage:4,from:0,label:'Start with the original equation',pair:[{eq:'abs(x − 2) = 3x + 6'},{eq:'abs(x − 2) = 3x + 6'}],say:S4},
+  {stage:4,over:true,sub:true,label:'Put each answer in for x',pair:[{eq:'abs(−4 − 2) = 3(−4) + 6'},{eq:'abs(−1 − 2) = 3(−1) + 6'}],say:'Put each answer in for $x$.'},
+  {stage:4,label:'Simplify',pair:[{eq:'abs(−6) = −12 + 6'},{eq:'abs(−3) = −3 + 6'}],say:'Simplify.'},
+  {stage:4,label:'One fails',pair:[{eq:'6 = −6',mark:'no',reject:true},{eq:'3 = 3',mark:'yes'}],
+   say:'$x = -4$ fails: $6$ is not $-6$. || **So the only solution is** $x = -1$.'}]}
+];
+})();
+
+/* Inequalities (kind ineq): less than (and) and greater than (or), a flip while isolating, a flip while solving, and the two
+   that never split. */
+window.ABS_PROBLEMS.ineq=['|x − 3| < 5','|x + 2| ≥ 4','3|x − 1| − 2 > 10','−2|x + 1| + 5 > −3','|4 − x| > 1',
+  '|x + 5| < −2','|x − 1| ≥ −3'].map(name=>({name,steps:MT.solveAbsIneq(name).steps}));
 </script>
 <script>
-/* Absolute Value Equations: pick a problem, step through it on the board, and track James's three steps. */
+/* Absolute Value: equations, x outside the bars, and inequalities in one tool (combined 2026-10-23).
+   Pick a preset (three rows, one per kind) or type a problem and press Build: MT.solveAbsAny tells the kinds apart
+   (an inequality sign → inequality; an x outside the bars → x outside; else an equation). The step tracker shows that
+   kind's steps in James's words and lights up the current one. Switches: Christmas present reminders (every kind) and
+   the great-OR / less th-AND card (inequalities only). */
 (function(){
 'use strict';
 const {$,hd,fontsReady}=MT.util;
@@ -1697,45 +2301,71 @@ const TL=MT.Timeline();
 let stageAt=[];
 const transport=MT.transport(TL,{onSync:showStage});
 const B=MT.Board({board:$('board'),wrap:$('boardwrap'),TL,transport});
-const P=window.ABS_PROBLEMS, KEY='mt-abs-problem'+(window.ABS_KEY||'');
+const P=window.ABS_PROBLEMS, KINDS=['eq','x','ineq'];
+const ROW={eq:'Equations',x:'x outside',ineq:'Inequalities'};
+const XMAS='<em class="xmas">Christmas morning</em>';
+const STAGES={
+  eq:['Isolate the absolute value',`Split it into a positive and a negative equation ${XMAS}`,'Solve both equations'],
+  x:['Isolate the absolute value',`Split it into a positive and a negative equation (flip ALL the signs on the negative side) ${XMAS}`,
+    'Solve both equations','Check each answer in the original equation'],
+  ineq:['Isolate the absolute value',`Split it into a positive and a negative inequality (flip the inequality on the negative side) ${XMAS}`,
+    'Solve both inequalities','And or or? Graph it and write the answer']};
+const store={get:k=>{ try{ return localStorage.getItem(k); }catch(e){ return null; } },set:(k,v)=>{ try{ localStorage.setItem(k,v); }catch(e){} }};
 
-// each beat knows which step it belongs to
+// switches: the Christmas present (drops the wrapping, the unwrapping and the notes) and the and/or trick card
+let gifts=store.get('mt-abs-gifts')!=='off', trick=store.get('mt-abs-trick')!=='off';
+const plain=st=>{ const {wrap,unwrap,note,...rest}=st; return rest; };
+const withTrick=st=>st.draw?{...st,draw:{...st.draw,trick}}:st;
+
+let cur={kind:'eq',i:1}, own=null; // cur.i = -1: the problem typed into the box (own = {src, kind, steps})
 function stagesFor(steps){ return TL.beats.map(b=>(steps[b.step]||{}).stage||1); }
 function showStage(){
   const n=TL.beats.length?stageAt[TL.beatIndex()]:1, finished=TL.time>=TL.dur-1e-3;
   document.querySelectorAll('#stages li').forEach(li=>{ const s=+li.dataset.stage;
     li.classList.toggle('now',s===n&&!finished); li.classList.toggle('done',s<n||finished&&s<=n); });
 }
-// the Christmas present reminders can be switched off: drop the wrapping, the unwrapping and the notes
-let gifts=true; try{ gifts=localStorage.getItem('mt-abs-gifts')!=='off'; }catch(e){}
-const plain=st=>{ const {wrap,unwrap,note,...rest}=st; return rest; };
-let current=0, own=null; // own: {src, steps} for a problem typed into the box (current = -1)
-const OUTSIDE=window.ABS_KEY==='-x';
-function show(i,autoplay){
-  current=i; const list=i<0?own.steps:P[i].steps, steps=gifts?list:list.map(plain);
+function drawStages(kind){
+  const ol=$('stages'); ol.textContent='';
+  STAGES[kind].forEach((txt,j)=>{ const li=hd('li','',ol,`<b>${j+1}</b><span>${txt}</span>`); li.dataset.stage=String(j+1); });
+  document.body.dataset.kind=kind; // shows the kind's own switches and legend entries
+}
+function show(kind,i,autoplay){
+  cur={kind,i};
+  const list=(i<0?own.steps:P[kind][i].steps).map(withTrick), steps=gifts?list:list.map(plain);
   document.body.classList.toggle('gifts',gifts);
-  document.querySelectorAll('#problems .chip').forEach((c,j)=>c.setAttribute('aria-pressed',String(j===i)));
+  drawStages(kind);
+  document.querySelectorAll('#problems .chip').forEach(c=>c.setAttribute('aria-pressed',String(c.dataset.kind===kind&&+c.dataset.i===i)));
   B.build(steps); stageAt=stagesFor(steps);
   if(autoplay) TL.next(); else if(TL.beats.length) TL.seek(TL.beats[0].end);
   transport.sync();
-  try{ localStorage.setItem(KEY,String(i)); if(i<0) localStorage.setItem(KEY+'-own',own.src); }catch(e){}
+  store.set('mt-abs-pick',i<0?'own':kind+':'+i); if(i<0) store.set('mt-abs-own',own.src);
 }
-// Build: MT.solveAbs writes the steps for any problem typed into the box
 function buildOwn(src,autoplay){
-  try{ const r=MT.solveAbs(src,{outside:OUTSIDE}); own={src,steps:r.steps}; $('err').hidden=true; show(-1,autoplay); return true; }
-  catch(e){ $('err').textContent=e.message||'I could not read that. Try something like |x − 3| = 5.'; $('err').hidden=false; return false; }
+  try{ const r=MT.solveAbsAny(src); own={src,kind:r.kind,steps:r.steps}; $('err').hidden=true; show(r.kind,-1,autoplay); return true; }
+  catch(e){ $('err').textContent=e.message||'I could not read that. Try something like |x − 3| = 5 or |x − 3| < 5.'; $('err').hidden=false; return false; }
 }
+function rebuildKeepTime(){ const t=TL.time; show(cur.kind,cur.i,false); TL.seek(Math.min(t,TL.dur)); transport.sync(); }
+
 $('form').addEventListener('submit',e=>{ e.preventDefault(); buildOwn($('eq').value,true); });
-P.forEach((p,i)=>{ const b=hd('button','chip',$('problems')); b.type='button'; b.textContent=p.name; b.setAttribute('aria-pressed','false');
-  b.addEventListener('click',()=>{ $('eq').value=p.name; $('err').hidden=true; show(i,true); }); });
+// the preset chips: one labelled row per kind
+KINDS.forEach(kind=>{ const row=hd('div','chips',$('problems')); hd('span','',row,ROW[kind]);
+  P[kind].forEach((p,i)=>{ const b=hd('button','chip',row); b.type='button'; b.textContent=p.name; b.dataset.kind=kind; b.dataset.i=String(i);
+    b.setAttribute('aria-pressed','false');
+    b.addEventListener('click',()=>{ $('eq').value=p.name; $('err').hidden=true; show(kind,i,true); }); }); });
 $('gifts').checked=gifts;
-$('gifts').addEventListener('change',e=>{ gifts=e.target.checked; try{ localStorage.setItem('mt-abs-gifts',gifts?'on':'off'); }catch(err){}
-  const t=TL.time; show(current,false); TL.seek(Math.min(t,TL.dur)); transport.sync(); });
+$('gifts').addEventListener('change',e=>{ gifts=e.target.checked; store.set('mt-abs-gifts',gifts?'on':'off'); rebuildKeepTime(); });
+$('trick').checked=trick;
+$('trick').addEventListener('change',e=>{ trick=e.target.checked; store.set('mt-abs-trick',trick?'on':'off'); rebuildKeepTime(); });
 if(window.MT_TEST) window.__steps={TL,get rows(){return B.rows;},show,buildOwn,fit:()=>B.fit()};
-fontsReady().then(()=>{ let i=1, src=null;
-  try{ const v=localStorage.getItem(KEY), s=+v; if(v!==null&&s>=0&&s<P.length) i=s; if(v==='-1') src=localStorage.getItem(KEY+'-own'); }catch(e){}
-  if(src){ $('eq').value=src; if(buildOwn(src,false)) return; }
-  $('eq').value=P[i].name; show(i,false); });
+
+// the and / or word is bold KaTeX: wait for that face too, or it is measured in a fallback font
+Promise.all([fontsReady(),document.fonts?document.fonts.load('bold 40px KaTeX_Main').catch(()=>{}):null]).then(()=>{
+  const pick=store.get('mt-abs-pick')||'', [k,n]=pick.split(':');
+  if(pick==='own'){ const src=store.get('mt-abs-own'); if(src){ $('eq').value=src; if(buildOwn(src,false)) return; } }
+  let kind='eq', i=1;
+  if(P[k]&&+n>=0&&+n<P[k].length){ kind=k; i=+n; }
+  $('eq').value=P[kind][i].name; show(kind,i,false);
+});
 })();
 </script>
 

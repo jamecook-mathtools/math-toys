@@ -155,6 +155,10 @@ kbd{font-family:var(--mono);font-size:.78rem;border:1px solid var(--line);border
 .board .strike{position:absolute;z-index:3;height:6px;margin-top:-3px;border-radius:3px;background:var(--no);transform-origin:50% 50%;opacity:0;pointer-events:none}
 /* Show where it came from (lib/fly.js): a number substituted in flies in a yellow chip. Shadows only, so the line never shifts */
 .board .tk.litfly{background:var(--hl);border-radius:6px;box-shadow:0 0 0 7px var(--hl),0 4px 16px 6px rgba(15,20,45,.16)}
+/* inequalities (2026-10-23): the tag over a sign that flips, and a row drawn by its own part (a number line) */
+.board .fliptag{position:absolute;z-index:2;transform:translate(-50%,-100%);white-space:nowrap;font:700 17px var(--display);color:var(--ink);
+  background:var(--hl);border-radius:999px;padding:2px 12px;pointer-events:none;opacity:0}
+.board .cell.draw{display:block;position:relative;justify-self:center;align-self:start}
 </style>
 <style>
 /* "Show where it came from" (lib/fly.js MT.fly.lit / MT.fly.mark): the source's yellow light, which settles into an
@@ -765,6 +769,11 @@ MT.fly.lit=function(TL,parent,o){
    Reminders (all optional): wrap:true on a single line makes its absolute value a wrapped present, invisible until a note mentions it (then it flashes); unwrap:true on a
    split step opens the present before the split; note:'…' pops a small reminder next to the present (or the line; not on phones) at
    the end of that step (at the unwrap on an unwrap step) and tucks it away at the next step.
+   Inequalities (2026-10-23): a line's relation can be = < > ≤ ≥ (the columns line up on it). flip:true on a line (or a pair side)
+   turns its inequality around: the old sign glides down unchanged, then on its own beat ("Flip the inequality") it lights up and
+   mirrors into the new one, with a small tag (fliptag:'…', default "flip!") above it.
+   draw:{kind,…} is a row of its own drawn by a registered part, MT.Board.draws[kind](draw, ctx) → {w, h, setup(cell), play(t) → t}
+   (the inequality number line, tools/absolute-value/andor.js). ctx gives it the board, the rows, beats and words.
    In say, **bold** marks the action, $…$ is inline math, and words after || appear once the line is worked out. Every worked line gets the same treatment:
    the pieces that combine light up yellow, the result rises out of them in green, the rest glides down. */
 (function(MT){
@@ -773,6 +782,7 @@ const {hd,S,clamp,lerp,E,bez}=MT.util, T=MT.theme, X=MT.expr, M=MT.math;
 
 /* ---------- text to tagged TeX ---------- */
 let lexId=500000;
+const RELS=['=','<','>','≤','≥'];
 const SYM={'-':'-','−':'-','+':'+','*':'\\cdot','·':'\\cdot','×':'\\times','÷':'\\div','/':'/','=':'=','<':'<','>':'>','≤':'\\le','≥':'\\ge'};
 // a light lexer for lines the parser can't read (other letters, like y or a): every piece still gets a key, so it can still move
 function lexTex(s){
@@ -832,9 +842,9 @@ MT.Board=function({board,wrap,TL,transport,dim=.5,say:SAYW=420}){
     const line={cell:c,grid:g,parts,branch,math:[]};
     const put=(el,tex)=>{ if(tex==null) return; const host=chip?hd('span','opchip',el):el, m=hd('div','math',host); M.render(m,tex); line.math.push(m); if(chip) (line.chips=line.chips||[]).push(host); };
     if(chip){ put(parts[0],opTex(eq)); put(parts[2],opTex(eq)); return line; }
-    const k=eq.indexOf('=');
+    const k=eq.search(/[=<>≤≥]/);
     put(parts[0],sideTex(k<0?eq:eq.slice(0,k)));
-    if(k>=0) put(parts[1],`\\mathrel{${X.K('k'+(++lexId),'=')}}`);
+    if(k>=0) put(parts[1],`\\mathrel{${X.K('k'+(++lexId),SYM[eq[k]])}}`);
     put(parts[2],k<0?null:sideTex(eq.slice(k+1)));
     return line;
   }
@@ -869,8 +879,13 @@ MT.Board=function({board,wrap,TL,transport,dim=.5,say:SAYW=420}){
       const pair=st.pair||null;
       const opsHere=pair?pair.map((p,b)=>p&&p.op&&p.op.trim()?[p.op,b]:null).filter(Boolean):(st.op&&st.op.trim()&&i>0?[[st.op,null]]:[]);
       if(opsHere.length){ for(const [op,b] of opsHere){ const l=eqLine(cell('op',r,COL(b)),op,{chip:true,branch:b}); row.ops.push(l); } r++; }
-      if(pair) pair.forEach((p,b)=>{ if(!p) return; const l=eqLine(cell('eq',r,COL(b)),p.eq||'',{branch:b}); l.answer=!!p.answer; l.mark=p.mark; l.reject=!!p.reject; row.lines.push(l); });
-      else { const l=eqLine(cell('eq',r,COL(null)),st.eq||''); l.answer=!!st.answer; l.wrap=!!st.wrap; row.lines.push(l); }
+      if(st.draw){ const D=MT.Board.draws&&MT.Board.draws[st.draw.kind];
+        if(!D) throw new Error('board: no draw part "'+st.draw.kind+'"');
+        const c=cell('draw',r,COL(null)); row.drawCell=c; row.extra.push(c);
+        row.draw=D(st.draw,{narrow,board,TL,get rows(){return rows;},row,i});
+        c.style.width=row.draw.w+'px'; c.style.height=row.draw.h+'px'; }
+      else if(pair) pair.forEach((p,b)=>{ if(!p) return; const l=eqLine(cell('eq',r,COL(b)),p.eq||'',{branch:b}); l.answer=!!p.answer; l.mark=p.mark; l.reject=!!p.reject; l.flip=!!p.flip; l.fliptag=p.fliptag||st.fliptag; row.lines.push(l); });
+      else { const l=eqLine(cell('eq',r,COL(null)),st.eq||''); l.answer=!!st.answer; l.wrap=!!st.wrap; l.flip=!!st.flip; l.fliptag=st.fliptag; row.lines.push(l); }
       for(const l of row.lines) if(l.answer) l.cell.classList.add('answer');
       row.eqR=r; r++;
       if(pair){ const v=hd('div','vseg',board); v.style.gridColumn='3'; v.style.gridRow=`${row.hrule?r0+1:r0} / ${r}`; row.vsegs.push(v);
@@ -883,6 +898,7 @@ MT.Board=function({board,wrap,TL,transport,dim=.5,say:SAYW=420}){
         row.wordsB=pair.map(p=>p&&p.say?sayHTML(hd('div','sayb',say),p.say):[]); row.wordsB[0]=[...head,...row.wordsB[0]]; row.words=row.wordsB.flat();
         if(after) row.after=sayHTML(hd('div','sayb',say),after);
       } else { const [before,after]=(st.say||'').split(/\s*\|\|\s*/); row.words=sayHTML(say,before||''); if(after){ say.append(' '); const n=row.words.length; row.after=sayHTML(say,after).slice(n); } }
+      if(row.draw&&row.draw.setup) row.draw.setup(row.drawCell);
       rows.push(row);
     });
     if(!narrow){ divider=hd('div','divider',board); divider.style.gridRow=`1 / ${r}`; divider.style.gridColumn='6'; } else divider=null;
@@ -897,6 +913,7 @@ MT.Board=function({board,wrap,TL,transport,dim=.5,say:SAYW=420}){
     }
     // long math widens the page (the whole board then scales down together) instead of running into the words
     const span=Math.max(0,...all.map(l=>{ const b=l.cell.getBoundingClientRect(); return l.branch==null?b.width:0; }),
+      ...rows.filter(rw=>rw.drawCell).map(rw=>rw.drawCell.getBoundingClientRect().width),
       ...rows.filter(rw=>rw.step.pair).map(rw=>{ const bs=rw.lines.map(l=>l.cell.getBoundingClientRect()); return Math.max(...bs.map(b=>b.right))-Math.min(...bs.map(b=>b.left)); }));
     const need=span+(narrow?16:48+4+SAYW)+8;
     if(need>W){ W=Math.ceil(need); board.style.width=W+'px'; }
@@ -910,7 +927,7 @@ MT.Board=function({board,wrap,TL,transport,dim=.5,say:SAYW=420}){
         const box={x:b.left-o.left,y:b.top-o.top,w:b.width,h:b.height}; into.set('raw'+(++lexId),{key:'raw',els:[m],sp:m,box,cx:box.x+box.w/2,cy:box.y+box.h/2,text:m.textContent}); return; }
       for(const [k,it] of r.items){ into.set(k,it); if(it.text==='x'){ it.col='accent'; M.paint(it,T.rgb(T.COL.accent)); } } };
     const finish=l=>{ l.items=new Map(); for(const m of l.math) grab(m,l.items);
-      const its=[...l.items.values()]; const eq=its.find(t=>t.text==='=');
+      const its=[...l.items.values()]; const eq=its.find(t=>RELS.includes(t.text)); l.rel=eq||null;
       if(its.length){ const x0=Math.min(...its.map(t=>t.box.x)), x1=Math.max(...its.map(t=>t.box.x+t.box.w)), y0=Math.min(...its.map(t=>t.box.y)), y1=Math.max(...its.map(t=>t.box.y+t.box.h));
         l.box={x:x0,y:y0,w:x1-x0,h:y1-y0}; } else { const b=l.cell.getBoundingClientRect(); l.box={x:b.left-o.left,y:b.top-o.top,w:b.width,h:b.height}; }
       if(eq) l.eqX=eq.cx; else { const g=l.parts[1].getBoundingClientRect(); l.eqX=g.left+g.width/2-o.left; }
@@ -1074,6 +1091,16 @@ MT.Board=function({board,wrap,TL,transport,dim=.5,say:SAYW=420}){
       if(row.after) tEnd+=revealWords(row.after,tEnd)+.1;
       return tEnd;
     }
+    /* the inequality flips: it lights up, a small tag says why, and the real sign mirrors into the new one (James, 2026-10-23) */
+    function flipSigns(ls,t){
+      for(const l of ls){ const it=l.flipRel, b=it.box;
+        const h=hlBox(b,9); TL.add(t,.12,p=>S(h,'opacity',p),E.lin); TL.add(t+1.5,.4,p=>S(h,'opacity',1-p),E.lin);
+        const tag=hd('div','fliptag',board,l.fliptag||'flip!'); S(tag,'left',(b.x+b.w/2)+'px'); S(tag,'top',(b.y-12)+'px'); S(tag,'opacity',0);
+        shown.push(tag); TL.add(t,.12,p=>S(tag,'opacity',p),E.lin); // a reminder: it just appears
+        TL.at(t+.35,s=>M.paint(it,s?T.rgb(T.COL.res):M.colorOf(it))); pendingInk.push(it);
+        TL.add(t+.35,.8,p=>M.applyM(it,{sx:-Math.cos(Math.PI*p),k:1+.28*Math.sin(Math.PI*p)}),E.inOut); }
+      return t+.35+.8+.45;
+    }
     /* one step; b limits it to one branch (0 left, 1 right) when the branches are solved one at a time */
     function stepRow(row,i,t,b=null,opt={}){
       const st=row.step, mine=l=>b==null||l.branch===b;
@@ -1084,6 +1111,13 @@ MT.Board=function({board,wrap,TL,transport,dim=.5,say:SAYW=420}){
         if(i>=2) for(const el of [...rowEls(rows[i-2]),rows[i-2].say]) fadeEl(el,t,.5,1,dim);
         if(i>=1&&rows[i-1].say!==row.say) fadeEl(rows[i-1].say,t,.5,1,dim); }
       if(row.secrule&&!opt.relight){ grow(row.secrule,t,.7,'X'); t+=.6; }
+      if(row.draw){ // a row drawn by its own part (a number line): the words first, then its own beats
+        divTo(t+.1,row.bot,.8);
+        const wd=revealWords(row.words,t+.1);
+        return row.draw.play(t+.1,{wordsEnd:t+.1+wd,beat:(tt,name)=>beat(tt,name,i),reveal:revealWords,hlBox,union,fade:fadeEl,
+          words:text=>sayHTML(hd('div','sayb',row.say),text),settle:it=>pendingInk.push(it),
+          note:(el,tt)=>{ shown.push(el); TL.add(tt,.12,p=>S(el,'opacity',p),E.lin); }});
+      }
       if(i===0){
         for(const l of labels) fadeEl(l,t,.5,0,1);
         divTo(t+.1,row.bot,.8);
@@ -1114,6 +1148,9 @@ MT.Board=function({board,wrap,TL,transport,dim=.5,say:SAYW=420}){
       // which pieces combine, and where each new line comes from
       if(st.sub) return subIn(row,i,t1,lines);
       const plans=lines.map(l=>{ const src=sourceOf(i,l); const pairs=src?pairUp(src.items,l.items):new Map();
+        if(l.flip&&src&&l.rel&&src.rel){ // the inequality turns around: the old sign itself comes down, then mirrors
+          for(const [kb,ka] of [...pairs]) if(kb===l.rel.key||ka===src.rel.key) pairs.delete(kb);
+          pairs.set(l.rel.key,src.rel.key); l.flipRel=l.rel; }
         const used=new Set(pairs.values()), op=row.ops.find(o=>o.branch===l.branch);
         const side=(x,ref)=>x<ref?0:1;
         const groups=[0,1].map(sd=>{ const gone=src?[...src.items.values()].filter(a=>!used.has(a.key)&&side(a.cx,src.eqX)===sd):[];
@@ -1144,7 +1181,8 @@ MT.Board=function({board,wrap,TL,transport,dim=.5,say:SAYW=420}){
         const {l,src,pairs,groups}=pl;
         for(const [k,bb] of l.items){ const ka=pairs.get(k); if(!ka) continue;
           const a=src.items.get(ka), dx=a.cx-bb.cx, dy=a.cy-bb.cy, kk=a.box.h/Math.max(1,bb.box.h);
-          M.motion(TL,bb,tg,D,v=>({dx:dx*(1-v),dy:dy*(1-v),k:lerp(kk,1,v),op:v>0?1:0})); }
+          const sx=bb===l.flipRel?-1:1; // a sign about to flip arrives still pointing the old way
+          M.motion(TL,bb,tg,D,v=>({dx:dx*(1-v),dy:dy*(1-v),k:lerp(kk,1,v),sx,op:v>0?1:0})); }
         for(const g of groups){
           const from=[...g.gone.map(a=>a.box),...(g.chip?[g.chip]:[])];
           g.fresh.sort((a,c)=>a.cx-c.cx).forEach((bb,j)=>{
@@ -1165,6 +1203,8 @@ MT.Board=function({board,wrap,TL,transport,dim=.5,say:SAYW=420}){
         }
       }
       t=last+.3;
+      const flips=lines.filter(l=>l.flipRel);
+      if(flips.length){ beat(t,'Flip the inequality',i); t=flipSigns(flips,t); }
       for(const l of lines) if(l.answer) boxAnswer(l,t);
       if(lines.some(l=>l.answer)) t+=.8;
       lines.filter(l=>l.mark).forEach((l,j)=>markLine(l,t+j*.35));
@@ -1188,9 +1228,10 @@ MT.Board=function({board,wrap,TL,transport,dim=.5,say:SAYW=420}){
       const next=hd('span','',sc,'Next'), done=hd('span','',sc,'Already solved');
       const place=(r,p)=>{ S(sc,'left',r.x+'px'); S(sc,'top',r.y+'px'); S(sc,'width',r.w+'px'); S(sc,'height',r.h+'px'); };
       place(R); S(sc,'opacity',0);
+      const held=pre.length&&rows[pre[0]].lines.some(l=>l.flipRel); // a flip just happened: keep it in view until the next click
       TL.add(t,.6,p=>{ S(sc,'opacity',p); S(sc,'transform',`translateY(${((1-p)*-24).toFixed(1)}px)`); },E.out);
       TL.at(t,s=>{ S(next,'display',''); S(done,'display','none'); });
-      t+=.7;
+      if(!held) t+=.7; // (after a flip the screen comes with the next click, so the flip stays in view)
       const has=(i,b)=>[...rows[i].lines,...rows[i].ops].some(l=>l.branch===b);
       const lab=(i,b)=>{ const p=rows[i].step.pair[b]; if(p&&(p.label||p.say)) return p.label||plainLabel(p); // that side's own words name it
         return (b?'Right: ':'Left: ')+(rows[i].step.label||plainLabel(rows[i].step)); };
